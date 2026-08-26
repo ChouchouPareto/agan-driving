@@ -14,11 +14,13 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--text); font-family: Inter, "Noto Sans SC", "PingFang SC", system-ui, sans-serif; }
 button, input, textarea { font: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; }
+button:disabled { cursor: not-allowed; opacity: .62; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(98,93,245,.25); outline-offset: 2px; }
 .shell { min-height: 100vh; }
 .topbar { height: 64px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 10; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; }
-.brandMark { width: 30px; height: 30px; border-radius: 9px; background: var(--primary); display: grid; place-items: center; color: white; }
+.brandMark { width: 34px; height: 34px; border-radius: 10px; background: var(--primary); display: grid; place-items: center; color: white; flex: 0 0 auto; }
 .mode { color: var(--secondary); font-size: 13px; }
 .main { width: min(720px, calc(100% - 32px)); margin: 0 auto; padding: 40px 0 96px; }
 .hero { margin-bottom: 24px; }
@@ -26,17 +28,20 @@ button { cursor: pointer; }
 .hero p { color: var(--secondary); margin: 0; line-height: 1.6; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .invite { max-width: 480px; margin: 64px auto; }
+.invite h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.15; letter-spacing: -.025em; margin: 40px 0 16px; }
 .label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
 .input { width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; outline: none; background: white; }
 .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(98,93,245,.15); }
 textarea.input { min-height: 112px; resize: vertical; line-height: 1.6; }
-.button { border: 0; border-radius: 8px; padding: 11px 16px; font-weight: 600; transition: background 180ms ease, border-color 180ms ease; }
+.button { min-height: 44px; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; transition: background 180ms ease, border-color 180ms ease, color 180ms ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .primary { background: var(--primary); color: white; }
 .primary:hover { background: var(--primary-hover); }
+.button:active:not(:disabled) { opacity: .82; }
 .secondaryButton { background: white; color: var(--text); border: 1px solid var(--border); }
 .secondaryButton:hover { border-color: #d3d3da; background: #fafafb; }
 .dangerButton { background: white; color: var(--danger); border: 1px solid var(--border); }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.composerMeta { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; color: var(--secondary); font-size: 13px; }
 .error { color: var(--danger); margin-top: 10px; font-size: 14px; }
 .privacy { color: var(--secondary); font-size: 13px; line-height: 1.6; margin-top: 14px; }
 .status { color: var(--primary); font-size: 14px; display: flex; align-items: center; gap: 8px; }
@@ -53,6 +58,7 @@ summary { cursor: pointer; font-weight: 600; }
 .ticketTitle { font-weight: 700; color: #453fd4; }
 .ticket p { color: var(--secondary); line-height: 1.6; margin-bottom: 0; }
 @keyframes pulse { 50% { opacity: .35; } }
+.spin { animation: spin .85s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-@media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .main { padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } }
-
+@media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }

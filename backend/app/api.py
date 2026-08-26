@@ -58,14 +58,46 @@ def get_conversation(conversation_id: str, student: Student = Depends(current_st
 
 
 @router.post("/questions", response_model=QuestionCreated)
-def submit_question(payload: QuestionCreate, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+def submit_question(payload: QuestionCreate, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), student: Student = Depends(current_student), db: Session = Depends(get_db)):
     conversation = db.scalar(select(Conversation).where(Conversation.id == payload.conversation_id, Conversation.student_id == student.id))
     if not conversation:
         raise error(404, "NOT_FOUND", "未找到该会话。")
-    question = Question(conversation_id=conversation.id, raw_text=payload.text.strip())
+    if idempotency_key:
+        if len(idempotency_key) > 128:
+            raise error(422, "INVALID_IDEMPOTENCY_KEY", "请求标识不符合要求。")
+        existing = db.scalar(select(Question).where(Question.request_id == idempotency_key))
+        if existing:
+            if existing.conversation_id == conversation.id and existing.raw_text == payload.text.strip():
+                return QuestionCreated(id=existing.id, request_id=existing.request_id, status=existing.status)
+            raise error(409, "IDEMPOTENCY_CONFLICT", "该请求标识已用于其他内容。")
+    question = Question(conversation_id=conversation.id, raw_text=payload.text.strip(), **({"request_id": idempotency_key} if idempotency_key else {}))
     db.add(question)
     db.commit()
     return QuestionCreated(id=question.id, request_id=question.request_id, status=question.status)
+
+
+@router.get("/questions/{question_id}")
+def get_question(question_id: str, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    question = db.scalar(select(Question).join(Conversation).where(Question.id == question_id, Conversation.student_id == student.id))
+    if not question:
+        raise error(404, "NOT_FOUND", "未找到该问题。")
+    answer = None
+    if question.answer:
+        answer = {
+            "id": question.answer.id, "direct_answer": question.answer.direct_answer,
+            "short_reason": question.answer.short_reason, "detail": question.answer.detail,
+            "common_mistake": question.answer.common_mistake,
+            "evidence": [{"source_type": item.source_type, "source_id": item.source_id, "title": item.title, "version": item.version, "excerpt": item.excerpt} for item in question.answer.evidence],
+            "risk_codes": [], "route": question.route,
+        }
+    review_ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
+    ticket = None
+    if review_ticket:
+        labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
+        ticket = {"id": review_ticket.id, "status": review_ticket.status, "label": labels.get(review_ticket.status, "状态待确认"), "sla": "问题已进入队列，工作时间内预计2小时处理。"}
+    if answer is not None and question.status == "NEEDS_REVIEW":
+        answer["risk_codes"] = review_ticket.risk_codes if review_ticket else ["NEEDS_REVIEW"]
+    return {"id": question.id, "text": question.raw_text, "status": question.status, "answer": answer, "ticket": ticket}
 
 
 @router.get("/questions/{question_id}/stream")
@@ -134,4 +166,3 @@ def get_ticket(ticket_id: str, student: Student = Depends(current_student), db: 
 @router.get("/health")
 def health():
     return {"status": "ok"}
-

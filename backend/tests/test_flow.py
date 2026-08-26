@@ -53,3 +53,31 @@ def test_invalid_session_cannot_read_conversation(client, auth):
     response = client.get(f"/api/v1/conversations/{conversation['id']}", headers={"Authorization": "Bearer invalid"})
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "INVALID_SESSION"
+
+
+def test_question_submission_is_idempotent_and_can_be_restored(client, auth):
+    conversation = client.post("/api/v1/conversations", headers=auth, json={}).json()
+    headers = {**auth, "Idempotency-Key": "same-question-request"}
+    payload = {"conversation_id": conversation["id"], "text": "驾驶机动车通过没有交通信号的交叉路口怎样行驶？"}
+    first = client.post("/api/v1/questions", headers=headers, json=payload).json()
+    second = client.post("/api/v1/questions", headers=headers, json=payload).json()
+    assert second["id"] == first["id"]
+    parse_done(client.get(f"/api/v1/questions/{first['id']}/stream", headers=auth))
+    restored = client.get(f"/api/v1/questions/{first['id']}", headers=auth)
+    assert restored.status_code == 200
+    assert restored.json()["answer"]["direct_answer"] == "减速慢行，并让右方道路来车先行。"
+
+
+def test_question_restore_is_scoped_to_student(client, auth):
+    question = create_question(client, auth, "这是一道待核查问题")
+    response = client.get(f"/api/v1/questions/{question['id']}", headers={"Authorization": "Bearer invalid"})
+    assert response.status_code == 401
+
+
+def test_idempotency_key_rejects_different_payload(client, auth):
+    conversation = client.post("/api/v1/conversations", headers=auth, json={}).json()
+    headers = {**auth, "Idempotency-Key": "conflicting-request"}
+    client.post("/api/v1/questions", headers=headers, json={"conversation_id": conversation["id"], "text": "第一个问题"})
+    conflict = client.post("/api/v1/questions", headers=headers, json={"conversation_id": conversation["id"], "text": "第二个问题"})
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"

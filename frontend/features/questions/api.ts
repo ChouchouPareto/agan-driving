@@ -1,0 +1,12 @@
+import { z } from "zod";
+import { API_ROOT, idempotencyKey, request } from "@/lib/api/client";
+import { answerSchema, conversationSchema, feedbackSchema, questionCreatedSchema, questionDetailSchema, ticketCreatedSchema, ticketSchema } from "@/lib/schemas/domain";
+export const createConversation = () => request("/conversations", conversationSchema, { method: "POST", body: "{}", headers: { "Idempotency-Key": idempotencyKey() } });
+export const createQuestion = (conversationId: string, text: string) => request("/questions", questionCreatedSchema, { method: "POST", body: JSON.stringify({ conversation_id: conversationId, text }), headers: { "Idempotency-Key": idempotencyKey() } });
+export const streamQuestion = (questionId: string, signal?: AbortSignal) => fetch(`${API_ROOT}/questions/${questionId}/stream`, { signal });
+export const getQuestion = (questionId: string) => request(`/questions/${questionId}`, questionDetailSchema);
+export const sendFeedback = (answerId: string, type: string) => request(`/answers/${answerId}/feedback`, feedbackSchema, { method: "POST", body: JSON.stringify({ type }) });
+export const explainAgain = (answerId: string) => request(`/answers/${answerId}/explain-again`, answerSchema, { method: "POST" });
+export const createTicket = (questionId: string, riskCodes: string[]) => request("/review-tickets", ticketCreatedSchema, { method: "POST", body: JSON.stringify({ question_id: questionId, risk_codes: riskCodes }), headers: { "Idempotency-Key": idempotencyKey() } });
+export const getTicket = (ticketId: string) => request(`/review-tickets/${ticketId}`, ticketSchema);
+export const streamErrorSchema = z.object({ error: z.object({ message: z.string() }) });

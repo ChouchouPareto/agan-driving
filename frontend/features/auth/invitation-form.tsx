@@ -1,0 +1,16 @@
+"use client";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, LoaderCircle } from "lucide-react";
+
+export function InvitationForm() {
+  const router = useRouter(); const [code, setCode] = useState("INVITE_CODE_REMOVED"); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  useEffect(() => { localStorage.removeItem("access_token"); fetch("/api/session").then(r => r.json()).then(v => { if (v.authenticated) router.replace("/ask"); }).catch(() => undefined); }, [router]);
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setError(""); setBusy(true);
+    try { const response = await fetch("/api/backend/auth/invitations/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? "邀请码无效或已失效。"); router.replace("/ask"); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "进入失败"); }
+    finally { setBusy(false); }
+  }
+  return <form onSubmit={submit} noValidate><label className="label" htmlFor="code">邀请码</label><input id="code" className="input" value={code} onChange={e => setCode(e.target.value)} autoComplete="off" minLength={4} maxLength={64} required aria-describedby={error ? "invite-error" : undefined}/><div className="actions"><button className="button primary" type="submit" disabled={busy}>{busy ? <><LoaderCircle aria-hidden="true" className="spin" size={18}/>正在验证</> : <>进入服务<ArrowRight aria-hidden="true" size={18}/></>}</button></div>{error && <p id="invite-error" className="error" role="alert">{error}</p>}</form>;
+}

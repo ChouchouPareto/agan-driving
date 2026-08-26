@@ -1,0 +1,11 @@
+import { z } from "zod";
+export const evidenceSchema = z.object({ source_type: z.string().optional(), source_id: z.string().optional(), title: z.string(), version: z.string(), excerpt: z.string() });
+export const answerSchema = z.object({ id: z.string(), direct_answer: z.string(), short_reason: z.string(), detail: z.string(), common_mistake: z.string(), evidence: z.array(evidenceSchema), risk_codes: z.array(z.string()).default([]), route: z.string().optional() });
+export const conversationSchema = z.object({ id: z.string(), status: z.string() });
+export const questionCreatedSchema = z.object({ id: z.string(), request_id: z.string(), status: z.string() });
+export const ticketCreatedSchema = z.object({ id: z.string(), status: z.string() });
+export const ticketSchema = z.object({ id: z.string(), status: z.string(), label: z.string(), sla: z.string() });
+export const feedbackSchema = z.object({ id: z.string(), type: z.string() });
+export const questionDetailSchema = z.object({ id: z.string(), text: z.string(), status: z.string(), answer: answerSchema.nullable(), ticket: ticketSchema.nullable() });
+export type Answer = z.infer<typeof answerSchema>;
+export type Ticket = z.infer<typeof ticketSchema>;
