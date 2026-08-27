@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     @property
     def mock_ai(self) -> bool:
-        return not (self.dify_base_url and self.dify_api_key and self.dify_workflow_id)
+        return not self.dashscope_api_key
 
     @property
     def mock_ocr(self) -> bool:

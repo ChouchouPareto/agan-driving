@@ -2,9 +2,9 @@ import hashlib
 import json
 import secrets
 import time
-from dataclasses import dataclass
 
 import httpx
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.models import AITrace, Answer, Conversation, Evidence, InvitationCode, Question, QuestionStatus, Student
 from app.schemas import AnswerPayload, EvidenceOut
 from app.knowledge.service import retrieve
+from app.pe.prompts import SYSTEM_PROMPT, TEACHING_EXPLANATION_PROMPT
 
 
 def digest(value: str) -> str:
@@ -57,34 +58,83 @@ class AIServiceError(RuntimeError):
     pass
 
 
+class TeachingExplanation(BaseModel):
+    short_reason: str = Field(min_length=4, max_length=240)
+    detail: str = Field(min_length=8, max_length=1200)
+    common_mistake: str = Field(min_length=4, max_length=300)
+
+
 class AIService:
     def __init__(self) -> None:
         self.settings = get_settings()
+        self.model_id = "deterministic-fallback"
+        self.token_usage = 0
+        self.is_mock = True
+        self.error_type: str | None = None
 
     def answer(self, text: str, match: dict | None, explain_again: bool = False) -> AnswerPayload:
         if match:
-            detail = match["detail"]
-            if explain_again:
+            explanation = None
+            if self.settings.dashscope_api_key:
+                try:
+                    explanation = self._call_dashscope_teaching(text, match, explain_again)
+                except AIServiceError:
+                    self.error_type = "TEACHING_MODEL_FALLBACK"
+            detail = explanation.detail if explanation else match["detail"]
+            if explain_again and not explanation:
                 detail = f"换个说法：先把路口想成排队通行。没有信号时先慢下来，再确认谁应先走。{match['detail']}"
             return AnswerPayload(
                 direct_answer=match["answer"],
-                short_reason=match["reason"],
+                short_reason=explanation.short_reason if explanation else match["reason"],
                 detail=detail,
-                common_mistake=match["mistake"],
+                common_mistake=explanation.common_mistake if explanation else match["mistake"],
                 evidence=[EvidenceOut(source_type="question_bank", source_id=match["source_id"], title=match["title"], version=match.get("knowledge_version", "seed-v1"), excerpt=match["excerpt"])],
                 route="standard_question",
             )
-        if self.settings.mock_ai:
-            return AnswerPayload(
-                direct_answer="这个问题目前没有命中经过审核的可靠依据。",
-                short_reason="为避免给出看似流畅但可能错误的答案，系统不会猜测。",
-                detail="你可以补充完整题干、选项、车型或适用地区；也可以提交给校长核查。",
-                common_mistake="不要把没有来源的网络说法当作现行考试规则。",
-                evidence=[],
-                route="open_theory",
-                risk_codes=["NO_TRUSTED_MATCH"],
-            )
-        return self._call_dify(text, explain_again)
+        return AnswerPayload(
+            direct_answer="这个问题目前没有命中经过审核的可靠依据。",
+            short_reason="为避免给出看似流畅但可能错误的答案，系统不会猜测。",
+            detail="你可以补充完整题干、选项、车型或适用地区；也可以提交给校长核查。",
+            common_mistake="不要把没有来源的网络说法当作现行考试规则。",
+            evidence=[], route="open_theory", risk_codes=["NO_TRUSTED_MATCH"],
+        )
+
+    def _call_dashscope_teaching(self, text: str, match: dict, explain_again: bool) -> TeachingExplanation:
+        request = {
+            "model": self.settings.main_model_id,
+            "messages": [
+                {"role": "system", "content": f"{SYSTEM_PROMPT}\n\n{TEACHING_EXPLANATION_PROMPT}"},
+                {"role": "user", "content": json.dumps({
+                    "question": text,
+                    "locked_standard_answer": match["answer"],
+                    "evidence": {"title": match["title"], "excerpt": match["excerpt"], "version": match.get("knowledge_version", "seed-v1")},
+                    "explanation_mode": "alternative" if explain_again else "first",
+                }, ensure_ascii=False)},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.2,
+        }
+        last_error: Exception | None = None
+        for _ in range(self.settings.model_max_retries + 1):
+            try:
+                response = httpx.post(
+                    f"{self.settings.dashscope_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"},
+                    json=request, timeout=self.settings.model_timeout_seconds,
+                )
+                response.raise_for_status()
+                body = response.json()
+                content = str(body["choices"][0]["message"]["content"]).strip()
+                if content.startswith("```"):
+                    content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                parsed = TeachingExplanation.model_validate_json(content)
+                self.model_id = self.settings.main_model_id
+                self.token_usage = int(body.get("usage", {}).get("total_tokens", 0))
+                self.is_mock = False
+                return parsed
+            except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+                last_error = exc
+        raise AIServiceError("DashScope teaching explanation failed") from last_error
 
     def _call_dify(self, text: str, explain_again: bool) -> AnswerPayload:
         url = f"{self.settings.dify_base_url.rstrip('/')}/v1/workflows/run"
@@ -114,7 +164,8 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
     try:
         question.status = QuestionStatus.GENERATING.value
         db.commit()
-        payload = AIService().answer(query_text, match, explain_again or question.intent == "FOLLOW_UP")
+        service = AIService()
+        payload = service.answer(query_text, match, explain_again or question.intent == "FOLLOW_UP")
         question.status = QuestionStatus.VALIDATING.value
         db.commit()
         if payload.route == "standard_question" and (not match or payload.direct_answer != match["answer"]):
@@ -138,7 +189,7 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
                 db.delete(item)
         for item in payload.evidence:
             db.add(Evidence(answer_id=answer.id, **item.model_dump()))
-        db.add(AITrace(question_id=question.id, model_id=get_settings().main_model_id, prompt_version=question.prompt_version, workflow_version="agent-loop-v1", latency_ms=int((time.monotonic() - started) * 1000), token_usage=0, is_mock=get_settings().mock_ai))
+        db.add(AITrace(question_id=question.id, model_id=service.model_id, prompt_version=question.prompt_version, workflow_version="agent-loop-v1", latency_ms=int((time.monotonic() - started) * 1000), token_usage=service.token_usage, error_type=service.error_type, is_mock=service.is_mock))
         db.commit()
         payload.id = answer.id
         return payload

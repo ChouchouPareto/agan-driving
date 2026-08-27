@@ -12,5 +12,8 @@ LEARNING_PROGRESS, SCHOOL_SERVICE, HUMAN_HELP, OUT_OF_SCOPE, SENSITIVE_CONTENT�
 FOLLOW_UP_REWRITE_PROMPT = """结合最近一道题，把省略上下文的追问改写为可独立检索的问题。
 不得补造题目、选项、答案或法规；只输出改写后的问题。"""
 
-TEACHING_EXPLANATION_PROMPT = """标准答案是不可变结论。根据证据，用适合驾考新学员的语言解释；
-第一次简洁直接，用户仍不懂时必须更换类比、步骤或反例，不机械复述。"""
+TEACHING_EXPLANATION_PROMPT = """标准答案由程序锁定，你不得输出或修改答案。
+你只能根据提供的证据，生成适合驾考新学员的教学解释。
+首次解释简洁直接；学员追问时，必须改用类比、步骤或反例，不机械复述。
+只输出 JSON：{"short_reason":"一句话原因","detail":"教学解释","common_mistake":"易错点"}。
+三个字段都必须与证据一致，不得引入未提供的数字、条款或规则。"""
