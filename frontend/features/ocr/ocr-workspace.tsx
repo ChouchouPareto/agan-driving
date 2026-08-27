@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Camera, ImageUp, LoaderCircle, RotateCcw } from "lucide-react";
+import { ImageUp, LoaderCircle, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import * as api from "./api";
 import type { OCRTask } from "./schemas";
@@ -89,14 +89,13 @@ export function OCRWorkspace({ initialTaskId, onTaskCreated, onQuestionCreated }
     return "正在确认任务状态";
   }, [task]);
 
-  return <section className="card ocrCard">
-    <div className="ocrHeading"><div><span className="mode">图片提问</span><h2>上传题目截图</h2></div><Camera aria-hidden="true" size={24}/></div>
-    <p className="ocrHint">支持 JPEG、PNG、WebP，单张不超过 10MB。请只截取题目区域，不要上传身份证、缴费单等敏感信息。</p>
+  return <section className="ocrPanel" aria-label="图片提问">
+    <div className="ocrUploadRow"><div><strong>也可以上传题目图片</strong><p className="ocrHint">支持 JPEG、PNG、WebP，单张不超过 10MB</p></div>
     {!task && <label className="uploadButton">
       {busy ? <LoaderCircle className="spin" aria-hidden="true" size={20}/> : <ImageUp aria-hidden="true" size={20}/>}
       {busy ? "上传中" : "选择图片或拍照"}
       <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={choose} disabled={busy}/>
-    </label>}
+    </label>}</div>
     {task && <div className="ocrStatus" aria-live="polite"><span className="dot"/>{statusText}</div>}
     {preview && <Image className="ocrPreview" src={preview} width={680} height={360} unoptimized alt="待识别的题目预览"/>}
     {task?.status === "WAITING_USER" && <div className="ocrFields">
@@ -112,5 +111,6 @@ export function OCRWorkspace({ initialTaskId, onTaskCreated, onQuestionCreated }
     {task?.status === "FAILED" && <label className="button secondaryButton"><RotateCcw aria-hidden="true" size={17}/>重新上传<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={choose} disabled={busy}/></label>}
     {message && <p className="statusText" aria-live="polite">{message}</p>}
     {error && <p className="error" role="alert">{error}</p>}
+    <p className="privacy ocrPrivacy">请只截取题目区域，不要上传身份证、缴费单等敏感信息。</p>
   </section>;
 }
