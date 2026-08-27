@@ -89,13 +89,12 @@ export function OCRWorkspace({ initialTaskId, onTaskCreated, onQuestionCreated }
     return "正在确认任务状态";
   }, [task]);
 
-  return <section className="ocrPanel" aria-label="图片提问">
-    <div className="ocrUploadRow"><div><strong>也可以上传题目图片</strong><p className="ocrHint">支持 JPEG、PNG、WebP，单张不超过 10MB</p></div>
-    {!task && <label className="uploadButton">
+  return <section className={task ? "ocrPanel active" : "ocrPanel"} aria-label="图片提问">
+    {!task && <div className="ocrUploadRow"><label className="uploadButton">
       {busy ? <LoaderCircle className="spin" aria-hidden="true" size={20}/> : <ImageUp aria-hidden="true" size={20}/>}
-      {busy ? "上传中" : "选择图片或拍照"}
+      {busy ? "正在上传" : "上传题目图片"}
       <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={choose} disabled={busy}/>
-    </label>}</div>
+    </label><span className="uploadMeta">支持拍照或从相册选择</span></div>}
     {task && <div className="ocrStatus" aria-live="polite"><span className="dot"/>{statusText}</div>}
     {preview && <Image className="ocrPreview" src={preview} width={680} height={360} unoptimized alt="待识别的题目预览"/>}
     {task?.status === "WAITING_USER" && <div className="ocrFields">
@@ -111,6 +110,6 @@ export function OCRWorkspace({ initialTaskId, onTaskCreated, onQuestionCreated }
     {task?.status === "FAILED" && <label className="button secondaryButton"><RotateCcw aria-hidden="true" size={17}/>重新上传<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={choose} disabled={busy}/></label>}
     {message && <p className="statusText" aria-live="polite">{message}</p>}
     {error && <p className="error" role="alert">{error}</p>}
-    <p className="privacy ocrPrivacy">请只截取题目区域，不要上传身份证、缴费单等敏感信息。</p>
+    {(task || busy || message || error) && <p className="privacy ocrPrivacy">请只截取题目区域，不要上传身份证、缴费单等敏感信息。</p>}
   </section>;
 }

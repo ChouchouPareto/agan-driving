@@ -85,15 +85,16 @@ summary { cursor: pointer; font-weight: 600; }
 .timeline li span { color: var(--secondary); font-size: 12px; }
 .emptyState { text-align: center; color: var(--secondary); padding: 48px; }
 .ocrCard h2 { margin: 5px 0 0; font-size: 20px; }
-.questionComposer { padding-bottom: 0; overflow: hidden; }
-.ocrPanel { border-top: 1px solid var(--border); margin: 20px -20px 0; padding: 18px 20px 16px; background: #fafafb; }
-.ocrUploadRow { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.ocrUploadRow strong { font-size: 14px; }
-.ocrUploadRow .ocrHint { margin: 4px 0 0; }
+.questionComposer { overflow: hidden; }
+.ocrPanel { margin-top: -44px; width: fit-content; max-width: calc(100% - 150px); position: relative; z-index: 1; }
+.ocrPanel.active { margin: 18px 0 0; width: 100%; max-width: none; border-top: 1px solid var(--border); padding-top: 18px; }
+.ocrUploadRow { min-height: 44px; display: flex; align-items: center; gap: 10px; }
+.uploadMeta { color: var(--secondary); font-size: 12px; }
 .ocrPrivacy { margin-bottom: 0; }
 .ocrHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .ocrHint { color: var(--secondary); font-size: 14px; line-height: 1.65; }
-.uploadButton { min-height: 44px; border: 1px solid #d8d6ff; border-radius: 9px; padding: 8px 13px; background: var(--primary-soft); color: #453fd4; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.uploadButton { min-height: 44px; border: 0; border-radius: 8px; padding: 8px 10px; background: transparent; color: #4b46d8; display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.uploadButton:hover { background: var(--primary-soft); }
 .uploadButton input, .secondaryButton input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
 .ocrStatus { display: flex; align-items: center; gap: 8px; color: var(--primary); margin: 14px 0; font-size: 14px; }
 .ocrPreview { width: 100%; max-height: 320px; object-fit: contain; background: #f3f3f5; border: 1px solid var(--border); border-radius: 10px; margin: 12px 0; }
@@ -111,5 +112,5 @@ summary { cursor: pointer; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }
-@media (max-width: 600px) { .questionComposer { padding-bottom: 0; } .ocrPanel { margin: 18px -16px 0; padding: 16px; } .ocrUploadRow { align-items: stretch; flex-direction: column; gap: 12px; } .ocrUploadRow .uploadButton { width: 100%; } }
+@media (max-width: 600px) { .ocrPanel { margin-top: 12px; max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { border-top: 1px solid var(--border); padding-top: 10px; justify-content: space-between; } .uploadMeta { text-align: right; } }
 @media (max-width: 800px) { .staffMain { width: min(100% - 24px, 720px); padding-top: 24px; } .ticketGrid, .detailGrid { grid-template-columns: 1fr; } .detailGrid aside { position: static; } .detailHeader { align-items: flex-start; flex-direction: column; } .detailHeader .button { width: 100%; } .queueTime { float: none; display: block; margin-top: 8px; } }
