@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models import KnowledgeChunk, KnowledgeSource, KnowledgeValidationIssue, KnowledgeVersion, RetrievalTrace, StandardQuestion
+from app.models import (
+    EvaluationCase, EvaluationCaseResult, EvaluationDataset, EvaluationRun,
+    KnowledgeActivationEvent, KnowledgeChunk, KnowledgeSource,
+    KnowledgeValidationIssue, KnowledgeVersion, RetrievalTrace, StandardQuestion,
+)
 
 NORMALIZER_VERSION = "1"
 
@@ -123,17 +127,28 @@ def build_index(db: Session, version_id: str, gateway: ModelGateway | None = Non
     version.collection_name, version.status = collection_name, "READY"; db.commit(); return version
 
 
-def activate(db: Session, version_id: str) -> KnowledgeVersion:
+def activate(db: Session, version_id: str, *, actor_id: str = "system", request_id: str | None = None, event_type: str = "ACTIVATE") -> KnowledgeVersion:
+    if request_id:
+        prior = db.scalar(select(KnowledgeActivationEvent).where(KnowledgeActivationEvent.request_id == request_id))
+        if prior:
+            if prior.to_version_id != version_id or prior.event_type != event_type: raise ValueError("idempotency key conflict")
+            return db.get(KnowledgeVersion, prior.to_version_id)
     version = db.get(KnowledgeVersion, version_id)
-    if not version or version.status != "READY" or version.error_count: raise ValueError("version failed quality gate")
-    for active in db.scalars(select(KnowledgeVersion).where(KnowledgeVersion.school_id == version.school_id, KnowledgeVersion.status == "ACTIVE")).all(): active.status = "RETIRED"
+    allowed = ("READY",) if event_type == "ACTIVATE" else ("RETIRED",)
+    latest_run = db.scalar(select(EvaluationRun).where(EvaluationRun.knowledge_version_id == version_id).order_by(EvaluationRun.created_at.desc())) if version else None
+    if not version or version.status not in allowed or version.error_count or not latest_run or latest_run.status != "PASSED": raise ValueError("version failed quality gate")
+    current = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == version.school_id, KnowledgeVersion.status == "ACTIVE"))
+    if current: current.status = "RETIRED"
     from datetime import datetime, timezone
-    version.status, version.activated_at = "ACTIVE", datetime.now(timezone.utc); db.commit(); return version
+    version.status, version.activated_at = "ACTIVE", datetime.now(timezone.utc)
+    db.add(KnowledgeActivationEvent(school_id=version.school_id, actor_id=actor_id, event_type=event_type, from_version_id=current.id if current else None, to_version_id=version.id, request_id=request_id or f"{event_type.lower()}-{version.id}-{time.time_ns()}"))
+    db.commit(); return version
 
 
-def retrieve(db: Session, text: str, school_id: str, region: str, license_type: str, question_id: str | None = None, gateway: ModelGateway | None = None) -> dict | None:
+def retrieve(db: Session, text: str, school_id: str, region: str, license_type: str, question_id: str | None = None, gateway: ModelGateway | None = None, knowledge_version_id: str | None = None) -> dict | None:
     started = time.monotonic(); gateway = gateway or ModelGateway()
-    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == region, KnowledgeVersion.license_type == license_type).order_by(KnowledgeVersion.activated_at.desc()))
+    version = db.get(KnowledgeVersion, knowledge_version_id) if knowledge_version_id else db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == region, KnowledgeVersion.license_type == license_type).order_by(KnowledgeVersion.activated_at.desc()))
+    if version and (version.school_id != school_id or version.region != region or version.license_type != license_type): version = None
     if not version: return None
     normalized = normalize(text); exact = db.scalar(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID", StandardQuestion.stem_fingerprint == fingerprint(text)))
     candidates = [exact] if exact else []
@@ -157,4 +172,39 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     if not selected: return None
     option = next((item for item in selected.options if str(item.get("label", "")).upper() == selected.standard_answer.upper()), None)
     display_answer = f"{selected.standard_answer}. {option['text']}" if option else selected.standard_answer
-    return {"answer": display_answer, "standard_answer": selected.standard_answer, "reason": selected.explanation[:160], "detail": selected.explanation, "mistake": "请注意题干中的否定词、范围和关键条件。", "source_id": selected.id, "title": "科目一标准题库", "excerpt": selected.explanation, "knowledge_version": version.version_label, "match_type": match_type, "region": selected.region, "license_type": selected.license_type}
+    return {"answer": display_answer, "standard_answer": selected.standard_answer, "reason": selected.explanation[:160], "detail": selected.explanation, "mistake": "请注意题干中的否定词、范围和关键条件。", "source_id": selected.id, "external_id": selected.external_id, "title": "科目一标准题库", "excerpt": selected.explanation, "knowledge_version": version.version_label, "match_type": match_type, "region": selected.region, "license_type": selected.license_type}
+
+
+def create_evaluation_dataset(db: Session, version_id: str) -> EvaluationDataset:
+    version = db.get(KnowledgeVersion, version_id)
+    if not version: raise ValueError("version not found")
+    dataset = EvaluationDataset(school_id=version.school_id, name=f"{version.version_label} 全量标准题评测", version_label=version.version_label)
+    db.add(dataset); db.flush()
+    for question in db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID")).all():
+        db.add(EvaluationCase(dataset_id=dataset.id, input_text=question.stem, expected_external_id=question.external_id, expected_answer=question.standard_answer, region=question.region, license_type=question.license_type, severity="P0"))
+    db.commit(); return dataset
+
+
+def run_evaluation(db: Session, version_id: str, dataset_id: str | None = None, gateway: ModelGateway | None = None) -> EvaluationRun:
+    version = db.get(KnowledgeVersion, version_id)
+    if not version or version.status not in ("READY", "ACTIVE", "RETIRED") or not version.collection_name: raise ValueError("version is not evaluable")
+    dataset = db.get(EvaluationDataset, dataset_id) if dataset_id else create_evaluation_dataset(db, version_id)
+    if not dataset or dataset.school_id != version.school_id: raise ValueError("dataset not found")
+    gateway = gateway or ModelGateway(); cases = db.scalars(select(EvaluationCase).where(EvaluationCase.dataset_id == dataset.id)).all()
+    run = EvaluationRun(dataset_id=dataset.id, knowledge_version_id=version.id, embedding_model=version.embedding_model, rerank_model=get_settings().rerank_model_id, total_cases=len(cases))
+    db.add(run); db.flush()
+    top1 = answers = passed = p0 = 0
+    try:
+        for case in cases:
+            result = retrieve(db, case.input_text, version.school_id, case.region, case.license_type, gateway=gateway, knowledge_version_id=version.id)
+            id_ok = bool(result and result["external_id"] == case.expected_external_id); answer_ok = bool(result and result["standard_answer"] == case.expected_answer)
+            top1 += int(id_ok); answers += int(answer_ok); case_passed = id_ok and answer_ok; passed += int(case_passed)
+            if not case_passed and case.severity == "P0": p0 += 1
+            db.add(EvaluationCaseResult(run_id=run.id, case_id=case.id, matched_question_id=result["source_id"] if result else None, actual_answer=result["standard_answer"] if result else None, passed=case_passed, error_code=None if case_passed else "EXPECTED_RESULT_MISMATCH", match_type=result["match_type"] if result else "none"))
+        run.passed_cases, run.p0_errors = passed, p0
+        run.top1_rate = top1 / len(cases) if cases else 0; run.answer_accuracy = answers / len(cases) if cases else 0
+        run.status = "PASSED" if cases and p0 == 0 and run.answer_accuracy == 1 else "FAILED"
+    except Exception:
+        run.status, run.error_message_safe = "FAILED", "评测执行失败，请检查模型和索引配置。"
+    from datetime import datetime, timezone
+    run.completed_at = datetime.now(timezone.utc); db.commit(); return run

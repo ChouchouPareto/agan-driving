@@ -334,3 +334,67 @@ class RetrievalTrace(Base):
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class EvaluationDataset(Base):
+    __tablename__ = "evaluation_datasets"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    version_label: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class EvaluationCase(Base):
+    __tablename__ = "evaluation_cases"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("evaluation_datasets.id"), index=True)
+    input_text: Mapped[str] = mapped_column(Text)
+    expected_external_id: Mapped[str] = mapped_column(String)
+    expected_answer: Mapped[str] = mapped_column(String)
+    region: Mapped[str] = mapped_column(String, default="全国")
+    license_type: Mapped[str] = mapped_column(String, default="C1")
+    severity: Mapped[str] = mapped_column(String, default="P0")
+
+
+class EvaluationRun(Base):
+    __tablename__ = "evaluation_runs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("evaluation_datasets.id"), index=True)
+    knowledge_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    status: Mapped[str] = mapped_column(String, default="RUNNING", index=True)
+    embedding_model: Mapped[str] = mapped_column(String)
+    rerank_model: Mapped[str] = mapped_column(String)
+    total_cases: Mapped[int] = mapped_column(Integer, default=0)
+    passed_cases: Mapped[int] = mapped_column(Integer, default=0)
+    p0_errors: Mapped[int] = mapped_column(Integer, default=0)
+    top1_rate: Mapped[float] = mapped_column(Float, default=0)
+    answer_accuracy: Mapped[float] = mapped_column(Float, default=0)
+    error_message_safe: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EvaluationCaseResult(Base):
+    __tablename__ = "evaluation_case_results"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey("evaluation_runs.id"), index=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("evaluation_cases.id"), index=True)
+    matched_question_id: Mapped[str | None] = mapped_column(ForeignKey("standard_questions.id"), nullable=True)
+    actual_answer: Mapped[str | None] = mapped_column(String, nullable=True)
+    passed: Mapped[bool] = mapped_column(Boolean, default=False)
+    error_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    match_type: Mapped[str] = mapped_column(String, default="none")
+
+
+class KnowledgeActivationEvent(Base):
+    __tablename__ = "knowledge_activation_events"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    actor_id: Mapped[str] = mapped_column(String)
+    event_type: Mapped[str] = mapped_column(String)
+    from_version_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_versions.id"), nullable=True)
+    to_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    request_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
