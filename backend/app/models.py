@@ -58,6 +58,16 @@ class Student(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class Staff(Base):
+    __tablename__ = "staff"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    display_name: Mapped[str] = mapped_column(String, default="值班校长")
+    school_id: Mapped[str] = mapped_column(String, index=True, default="pilot-school")
+    role: Mapped[str] = mapped_column(String, default="coach")
+    session_token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
@@ -118,10 +128,38 @@ class ReviewTicket(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
     question_id: Mapped[str] = mapped_column(ForeignKey("questions.id"), index=True)
     student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    school_id: Mapped[str] = mapped_column(String, index=True, default="pilot-school")
     status: Mapped[str] = mapped_column(String, default=TicketStatus.QUEUED.value)
     risk_codes: Mapped[list[str]] = mapped_column(JSON, default=list)
+    assignee_id: Mapped[str | None] = mapped_column(ForeignKey("staff.id"), nullable=True, index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class TicketMessage(Base):
+    __tablename__ = "ticket_messages"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("review_tickets.id"), index=True)
+    author_type: Mapped[str] = mapped_column(String)
+    author_id: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class TicketEvent(Base):
+    __tablename__ = "ticket_events"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("review_tickets.id"), index=True)
+    actor_type: Mapped[str] = mapped_column(String)
+    actor_id: Mapped[str] = mapped_column(String)
+    event_type: Mapped[str] = mapped_column(String)
+    from_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    request_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class AITrace(Base):

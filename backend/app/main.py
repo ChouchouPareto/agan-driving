@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import router
+from app.staff_api import router as staff_router
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.services import seed
@@ -21,6 +22,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="驾校科目一智能助教 API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins.split(","), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
+app.include_router(staff_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -37,4 +39,3 @@ async def http_error(_: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def unhandled_error(_: Request, __: Exception):
     return JSONResponse(status_code=500, content={"error": {"code": "INTERNAL_ERROR", "message": "服务暂时不可用，请稍后重试。"}})
-

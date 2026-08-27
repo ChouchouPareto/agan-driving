@@ -57,6 +57,33 @@ summary { cursor: pointer; font-weight: 600; }
 .ticket { background: var(--primary-soft); border-color: #dcd9ff; }
 .ticketTitle { font-weight: 700; color: #453fd4; }
 .ticket p { color: var(--secondary); line-height: 1.6; margin-bottom: 0; }
+.textLink, .backLink { color: #4b46d8; font-weight: 650; text-decoration: none; }
+.backLink { display: inline-block; border: 0; background: transparent; padding: 4px 0; margin-bottom: 20px; }
+.staffMain { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 96px; }
+.filterBar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.filterChip { border: 1px solid var(--border); border-radius: 999px; background: white; padding: 8px 14px; color: var(--secondary); }
+.filterChip.active { color: white; border-color: var(--primary); background: var(--primary); }
+.ticketGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.queueCard { display: block; color: inherit; text-decoration: none; margin: 0; transition: transform 160ms ease, border-color 160ms ease; }
+.queueCard:hover { transform: translateY(-2px); border-color: #c9c6ff; }
+.queueCard h2 { margin: 18px 0 8px; font-size: 18px; }
+.queueCard p { color: var(--secondary); line-height: 1.55; }
+.queueTime { float: right; color: var(--secondary); font-size: 12px; }
+.statusPill { display: inline-flex; border-radius: 999px; padding: 5px 10px; background: var(--primary-soft); color: #4943d5; font-size: 12px; font-weight: 700; }
+.status-replied { background: #fff4dc; color: #945800; } .status-closed { background: #e8f7ef; color: var(--success); } .status-processing { background: #eaf2ff; color: #2864bd; }
+.detailHeader { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+.detailHeader h1 { margin: 10px 0 0; }
+.detailGrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .8fr); gap: 20px; align-items: start; }
+.detailGrid aside { position: sticky; top: 84px; }
+.questionText { white-space: pre-wrap; line-height: 1.75; }
+.riskList { display: flex; flex-wrap: wrap; gap: 8px; }
+.riskTag { border-radius: 6px; padding: 5px 8px; background: #fff0f1; color: var(--danger); font-size: 12px; }
+.message { border-left: 3px solid var(--primary); padding-left: 12px; margin: 14px 0; }
+.message p { white-space: pre-wrap; line-height: 1.65; }
+.timeline { list-style: none; padding: 0; margin: 0; }
+.timeline li { border-left: 2px solid #d9d7ff; padding: 0 0 20px 18px; display: flex; justify-content: space-between; gap: 16px; }
+.timeline li span { color: var(--secondary); font-size: 12px; }
+.emptyState { text-align: center; color: var(--secondary); padding: 48px; }
 .ocrCard h2 { margin: 5px 0 0; font-size: 20px; }
 .ocrHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .ocrHint { color: var(--secondary); font-size: 14px; line-height: 1.65; }
@@ -78,3 +105,4 @@ summary { cursor: pointer; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }
+@media (max-width: 800px) { .staffMain { width: min(100% - 24px, 720px); padding-top: 24px; } .ticketGrid, .detailGrid { grid-template-columns: 1fr; } .detailGrid aside { position: static; } .detailHeader { align-items: flex-start; flex-direction: column; } .detailHeader .button { width: 100%; } .queueTime { float: none; display: block; margin-top: 8px; } }

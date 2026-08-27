@@ -312,7 +312,7 @@ def create_ticket(payload: TicketCreate, student: Student = Depends(current_stud
     existing = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
     if existing:
         return {"id": existing.id, "status": existing.status}
-    ticket = ReviewTicket(question_id=question.id, student_id=student.id, risk_codes=payload.risk_codes)
+    ticket = ReviewTicket(question_id=question.id, student_id=student.id, school_id=student.school_id, risk_codes=payload.risk_codes)
     db.add(ticket)
     db.commit()
     return {"id": ticket.id, "status": ticket.status}
@@ -323,8 +323,8 @@ def get_ticket(ticket_id: str, student: Student = Depends(current_student), db: 
     ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.id == ticket_id, ReviewTicket.student_id == student.id))
     if not ticket:
         raise error(404, "NOT_FOUND", "未找到该工单。")
-    labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
-    return {"id": ticket.id, "status": ticket.status, "label": labels[ticket.status], "sla": "问题已进入队列，工作时间内预计2小时处理。"}
+    from app.staff_api import ticket_payload
+    return ticket_payload(db, ticket)
 
 
 @router.get("/health")

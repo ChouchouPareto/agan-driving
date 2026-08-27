@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "development"
     app_secret: str = "development-only-change-me"
+    staff_invitation_code: str = "INVITE_CODE_REMOVED"
     database_url: str = "sqlite:///../data/app.db"
     dify_base_url: str = ""
     dify_api_key: str = ""

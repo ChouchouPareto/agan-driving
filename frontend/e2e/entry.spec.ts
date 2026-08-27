@@ -36,3 +36,27 @@ test("图片题目可识别、确认并进入可信问答", async ({ page }) => 
   await page.getByRole("button", { name: "提交问题" }).click();
   await expect(page.getByText("减速慢行，并让右方道路来车先行。")).toBeVisible();
 });
+
+test("校长认领回复后由学员确认关闭", async ({ browser }) => {
+  const student = await browser.newContext(); const studentPage = await student.newPage();
+  await studentPage.goto("/enter"); await studentPage.getByRole("button", { name: "进入服务" }).click();
+  await studentPage.getByLabel("输入题目或科目一问题").fill("请告诉我一个没有任何来源的新规定");
+  await studentPage.getByRole("button", { name: "提交问题" }).click();
+  await expect(studentPage.getByRole("button", { name: "提交给校长" })).toBeVisible();
+  await studentPage.getByRole("button", { name: "提交给校长" }).click();
+  const detailLink = studentPage.getByRole("link", { name: /查看处理详情/ }); await expect(detailLink).toBeVisible();
+  const href = await detailLink.getAttribute("href"); expect(href).toBeTruthy();
+
+  const staff = await browser.newContext(); const staffPage = await staff.newPage();
+  await staffPage.goto("/staff/enter"); await staffPage.getByRole("button", { name: "进入校长工作台" }).click();
+  await expect(staffPage).toHaveURL(/staff\/tickets$/); await staffPage.getByRole("link", { name: /查看并处理/ }).first().click();
+  await staffPage.getByRole("button", { name: "认领并开始处理" }).click();
+  await staffPage.getByPlaceholder("给学员明确、可执行的解释…").fill("请以现行题库规则为准，这个说法目前没有可靠依据。");
+  await staffPage.getByRole("button", { name: "发送给学员" }).click();
+  await expect(staffPage.getByText("已回复，等待学员确认解决。")).toBeVisible();
+
+  await studentPage.goto(href!); await expect(studentPage.getByText("请以现行题库规则为准，这个说法目前没有可靠依据。")).toBeVisible();
+  await studentPage.getByRole("button", { name: "校长说好了" }).click();
+  await expect(studentPage.getByText("你已确认解决")).toBeVisible();
+  await student.close(); await staff.close();
+});

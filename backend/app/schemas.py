@@ -56,6 +56,19 @@ class TicketCreate(BaseModel):
     risk_codes: list[str] = []
 
 
+class TicketClaim(BaseModel):
+    version: int = Field(ge=1)
+
+
+class TicketReply(BaseModel):
+    version: int = Field(ge=1)
+    content: str = Field(min_length=2, max_length=4000)
+
+
+class TicketAcknowledge(BaseModel):
+    version: int = Field(ge=1)
+
+
 class OCRTaskCreate(BaseModel):
     asset_id: str
 
