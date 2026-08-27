@@ -10,8 +10,8 @@ const responseSchema=z.object({knowledge_version:z.string().nullable(),summary:s
 const resultSchema=z.object({correct:z.boolean(),standard_answer:z.string(),explanation:z.string(),is_favorite:z.boolean(),summary:summarySchema});
 type Mode="all"|"wrong"|"favorites";
 
-export function PracticeWorkspace(){
-  const [items,setItems]=useState<z.infer<typeof questionSchema>[]>([]);const [index,setIndex]=useState(0);const [selected,setSelected]=useState("");const [result,setResult]=useState<z.infer<typeof resultSchema>|null>(null);const [error,setError]=useState("");const [version,setVersion]=useState("");const [summary,setSummary]=useState<z.infer<typeof summarySchema>|null>(null);const [mode,setMode]=useState<Mode>("all");const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);
+export function PracticeWorkspace({initialMode="all"}:{initialMode?:Mode}){
+  const [items,setItems]=useState<z.infer<typeof questionSchema>[]>([]);const [index,setIndex]=useState(0);const [selected,setSelected]=useState("");const [result,setResult]=useState<z.infer<typeof resultSchema>|null>(null);const [error,setError]=useState("");const [version,setVersion]=useState("");const [summary,setSummary]=useState<z.infer<typeof summarySchema>|null>(null);const [mode,setMode]=useState<Mode>(initialMode);const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);
   const load=useCallback(async(nextMode:Mode)=>{try{const r=await fetch(`/api/backend/practice/questions?mode=${nextMode}`,{cache:"no-store"});const body=await r.json();if(!r.ok)throw new Error(body.error?.message??"加载失败");const parsed=responseSchema.parse(body);setItems(parsed.items);setVersion(parsed.knowledge_version??"");setSummary(parsed.summary);setIndex(0);setSelected("");setResult(null)}catch(e){setError(e instanceof Error?e.message:"加载失败")}finally{setLoading(false)}},[]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- loading the selected practice queue is the external synchronization performed here.
   useEffect(()=>{load(mode)},[load,mode]);const current=items[index];
