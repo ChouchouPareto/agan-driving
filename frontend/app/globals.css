@@ -42,6 +42,20 @@ textarea.input { min-height: 112px; resize: vertical; line-height: 1.6; }
 .dangerButton { background: white; color: var(--danger); border: 1px solid var(--border); }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .composerMeta { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 12px; color: var(--secondary); font-size: 13px; }
+.learningEntrances { display: grid; grid-template-columns: 1.2fr .8fr; gap: 12px; margin-bottom: 18px; }
+.learningEntrance { min-height: 92px; display: flex; align-items: center; gap: 13px; padding: 18px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; transition: transform 160ms ease, border-color 160ms ease; }
+.learningEntrance:hover { transform: translateY(-2px); border-color: #c9c6ff; }
+.practiceEntrance { background: linear-gradient(135deg, #625df5, #766fff); color: white; border-color: transparent; }
+.entranceIcon { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 11px; background: var(--primary-soft); color: var(--primary); }
+.practiceEntrance .entranceIcon { background: rgba(255,255,255,.16); color: white; }
+.learningEntrance span:nth-child(2) { display: grid; gap: 5px; min-width: 0; }
+.learningEntrance strong { font-size: 16px; }
+.learningEntrance small { color: var(--secondary); line-height: 1.4; }
+.practiceEntrance small { color: rgba(255,255,255,.78); }
+.learningEntrance b { margin-left: auto; white-space: nowrap; font-size: 13px; }
+.composerFooter { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-top: 10px; }
+.composerActions { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.characterCount { color: var(--secondary); font-size: 13px; white-space: nowrap; }
 .error { color: var(--danger); margin-top: 10px; font-size: 14px; }
 .privacy { color: var(--secondary); font-size: 13px; line-height: 1.6; margin-top: 14px; }
 .status { color: var(--primary); font-size: 14px; display: flex; align-items: center; gap: 8px; }
@@ -91,7 +105,7 @@ summary { cursor: pointer; font-weight: 600; }
 .issueRow p { margin-bottom: 0; color: var(--secondary); }
 .ocrCard h2 { margin: 5px 0 0; font-size: 20px; }
 .questionComposer { overflow: hidden; }
-.ocrPanel { margin-top: -44px; width: fit-content; max-width: calc(100% - 150px); position: relative; z-index: 1; }
+.ocrPanel { width: fit-content; max-width: 100%; position: relative; z-index: 1; }
 .ocrPanel.active { margin: 18px 0 0; width: 100%; max-width: none; border-top: 1px solid var(--border); padding-top: 18px; }
 .ocrUploadRow { min-height: 44px; display: flex; align-items: center; gap: 10px; }
 .uploadMeta { color: var(--secondary); font-size: 12px; }
@@ -112,10 +126,26 @@ summary { cursor: pointer; font-weight: 600; }
 .statusText { color: var(--primary); font-size: 14px; }
 .sectionDivider { display: flex; align-items: center; gap: 12px; color: var(--secondary); font-size: 13px; margin: 6px 0 16px; }
 .sectionDivider::before, .sectionDivider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+.practiceTop { display: flex; justify-content: space-between; align-items: center; color: var(--secondary); }
+.questionNumber { color: var(--primary); font-size: 13px; font-weight: 700; }
+.practiceCard h2 { font-size: 21px; line-height: 1.55; margin: 12px 0 20px; }
+.optionList { display: grid; gap: 10px; }
+.practiceOption { width: 100%; min-height: 56px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--text); }
+.practiceOption:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+.practiceOption span { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; background: #f1f1f4; color: var(--secondary); }
+.practiceOption strong { flex: 1; font-weight: 550; line-height: 1.5; }
+.practiceOption.correct { border-color: #80cba5; background: #eef9f3; color: #116a3e; }
+.practiceOption.wrong { border-color: #eda5ad; background: #fff2f3; color: #a72b39; }
+.practiceResult { margin-top: 18px; border-radius: 10px; padding: 14px; line-height: 1.6; }
+.practiceResult p { margin: 6px 0 0; }
+.correctResult { background: #eef9f3; color: #116a3e; }
+.wrongResult { background: #fff2f3; color: #a72b39; }
+.practiceActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.practiceHint { color: var(--secondary); font-size: 13px; }
 @keyframes pulse { 50% { opacity: .35; } }
 .spin { animation: spin .85s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }
-@media (max-width: 600px) { .ocrPanel { margin-top: 12px; max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { border-top: 1px solid var(--border); padding-top: 10px; justify-content: space-between; } .uploadMeta { text-align: right; } }
+@media (max-width: 600px) { .learningEntrances { grid-template-columns: 1fr; } .learningEntrance { min-height: 82px; } .composerFooter { flex-direction: column; } .composerActions { width: 100%; justify-content: space-between; } .composerActions .button { flex: 1; } .ocrPanel { max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { border-top: 1px solid var(--border); padding-top: 10px; justify-content: space-between; } .uploadMeta { text-align: right; } }
 @media (max-width: 800px) { .staffMain { width: min(100% - 24px, 720px); padding-top: 24px; } .ticketGrid, .detailGrid { grid-template-columns: 1fr; } .detailGrid aside { position: static; } .detailHeader { align-items: flex-start; flex-direction: column; } .detailHeader .button { width: 100%; } .queueTime { float: none; display: block; margin-top: 8px; } }

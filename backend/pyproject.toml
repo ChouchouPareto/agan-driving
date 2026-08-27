@@ -12,6 +12,7 @@ dependencies = [
   "pillow>=11,<12",
   "python-multipart>=0.0.20,<1",
   "chromadb>=1.0,<2",
+  "openpyxl>=3.1,<4",
 ]
 
 [dependency-groups]

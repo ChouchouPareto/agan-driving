@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models import Answer, Conversation, Feedback, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, Student, UploadedAsset
+from app.models import Answer, Conversation, Feedback, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
 from app.schemas import AuthResult, ConversationCreate, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
@@ -77,6 +77,15 @@ def verify(payload: InvitationVerify, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(student: Student = Depends(current_student)):
     return {"id": student.id, "anonymous_id": student.anonymous_id, "subject": student.subject, "license_type": student.license_type, "region": student.region}
+
+
+@router.get("/practice/questions")
+def practice_questions(student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == student.license_type).order_by(KnowledgeVersion.activated_at.desc()))
+    if not version:
+        return {"items": [], "knowledge_version": None}
+    items = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID").order_by(StandardQuestion.external_id).limit(20)).all()
+    return {"knowledge_version": version.version_label, "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "standard_answer": item.standard_answer, "explanation": item.explanation} for item in items]}
 
 
 @router.post("/conversations")
