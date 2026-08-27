@@ -1,7 +1,10 @@
 import io
+from datetime import datetime, timedelta, timezone
 
 from PIL import Image
-from app.ocr_services import parse_ocr_text
+from app.core.database import SessionLocal
+from app.models import UploadedAsset
+from app.ocr_services import LocalStorage, delete_expired_assets, parse_ocr_text
 
 
 def image_bytes(fmt: str = "PNG") -> bytes:
@@ -90,3 +93,19 @@ def test_plain_ocr_text_is_deterministically_split_and_requires_confirmation():
     assert parsed.stem.value == "一道题目？"
     assert [item.label for item in parsed.options] == ["A", "B"]
     assert all(item.confidence == 0 for item in parsed.options)
+
+
+def test_expired_asset_is_physically_deleted(client, auth):
+    asset_id = upload(client, auth).json()["asset_id"]
+    with SessionLocal() as db:
+        asset = db.get(UploadedAsset, asset_id)
+        storage_key = asset.storage_key
+        asset.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db.commit()
+    assert delete_expired_assets() == 1
+    try:
+        LocalStorage().read(storage_key)
+        assert False, "expired file should be deleted"
+    except FileNotFoundError:
+        pass
+    assert client.get(f"/api/v1/assets/{asset_id}/content", headers=auth).status_code == 404
