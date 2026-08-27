@@ -11,12 +11,20 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import Answer, Conversation, Feedback, KnowledgeSource, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
-from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
+from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, LearningContextPatch, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
 from app.pe import classify_intent, resolve_follow_up
 from app.pe.prompts import PROMPT_VERSION
 
 router = APIRouter(prefix="/api/v1")
+LICENSE_TYPES = {"A1", "A2", "A3", "B1", "B2", "C1", "C2", "C3", "C4", "C5", "C6", "D", "E", "F", "M", "N", "P"}
+SUBJECTS = {"subject-1", "subject-2", "subject-3", "subject-4"}
+
+
+def _knowledge_license_type(license_type: str, subject: str) -> str | None:
+    if license_type in {"C1", "C2"} and subject in {"subject-1", "subject-4", "科目一", "科目四"}:
+        return "C1"
+    return None
 
 
 def error(status: int, code: str, message: str) -> HTTPException:
@@ -81,14 +89,27 @@ def me(student: Student = Depends(current_student)):
     return {"id": student.id, "anonymous_id": student.anonymous_id, "subject": student.subject, "license_type": student.license_type, "region": student.region}
 
 
+@router.patch("/me/learning-context")
+def update_learning_context(payload: LearningContextPatch, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    if payload.license_type not in LICENSE_TYPES or payload.subject not in SUBJECTS:
+        raise error(422, "INVALID_LEARNING_CONTEXT", "请选择有效的准驾车型和学习阶段。")
+    student.license_type = payload.license_type
+    student.subject = payload.subject
+    db.commit()
+    return {"license_type": student.license_type, "subject": student.subject, "content_available": _knowledge_license_type(student.license_type, student.subject) is not None}
+
+
 @router.get("/knowledge/status")
 def student_knowledge_status(student: Student = Depends(current_student), db: Session = Depends(get_db)):
-    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == student.license_type).order_by(KnowledgeVersion.activated_at.desc()))
+    knowledge_license = _knowledge_license_type(student.license_type, student.subject)
+    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == knowledge_license).order_by(KnowledgeVersion.activated_at.desc())) if knowledge_license else None
     if not version:
         return {"connected": False, "version": None, "item_count": 0, "scope": f"{student.region} · {student.license_type}", "is_preview": True, "notice": "当前没有已激活的知识库。"}
     source = db.get(KnowledgeSource, version.source_id)
     is_preview = not source or source.license_scope != "commercial"
-    return {"connected": True, "version": version.version_label, "item_count": version.item_count, "scope": f"{version.region} · {version.license_type}", "is_preview": is_preview, "notice": "当前为研究联调题库，正式上线前将替换为供应商授权版本。" if is_preview else "当前使用已授权正式题库。"}
+    shared_notice = "C2 理论阶段当前与 C1 共用道路安全法规与通行规则题库。" if student.license_type == "C2" else ""
+    base_notice = "当前为研究联调题库，正式上线前将替换为供应商授权版本。" if is_preview else "当前使用已授权正式题库。"
+    return {"connected": True, "version": version.version_label, "item_count": version.item_count, "scope": f"{student.region} · {student.license_type}", "is_preview": is_preview, "notice": f"{shared_notice}{base_notice}"}
 
 
 def _practice_summary(db: Session, student: Student, version: KnowledgeVersion) -> dict:
@@ -98,8 +119,9 @@ def _practice_summary(db: Session, student: Student, version: KnowledgeVersion) 
 
 
 @router.get("/practice/questions")
-def practice_questions(mode: str = Query(default="all", pattern="^(all|wrong|favorites)$"), student: Student = Depends(current_student), db: Session = Depends(get_db)):
-    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == student.license_type).order_by(KnowledgeVersion.activated_at.desc()))
+def practice_questions(mode: str = Query(default="all", pattern="^(all|wrong|favorites)$"), license_type: str = Query(default="C1"), subject: str = Query(default="subject-1"), student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    knowledge_license = _knowledge_license_type(license_type, subject)
+    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == knowledge_license).order_by(KnowledgeVersion.activated_at.desc())) if knowledge_license else None
     if not version:
         return {"items": [], "knowledge_version": None, "summary": {"attempted": 0, "correct_attempts": 0, "total_attempts": 0, "wrong_count": 0, "favorite_count": 0, "accuracy": 0}}
     progress_rows = db.scalars(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.knowledge_version_id == version.id)).all(); progress = {row.standard_question_id: row for row in progress_rows}
@@ -304,6 +326,10 @@ def _question_payload(db: Session, question: Question, student: Student) -> dict
 
 @router.post("/agent/messages", response_model=AgentMessageResult)
 def agent_message(payload: AgentMessageCreate, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    if payload.license_type not in LICENSE_TYPES or payload.subject not in SUBJECTS:
+        raise error(422, "INVALID_LEARNING_CONTEXT", "请选择有效的准驾车型和学习阶段。")
+    student.license_type = payload.license_type
+    student.subject = payload.subject
     conversation = None
     if payload.conversation_id:
         conversation = db.scalar(select(Conversation).where(Conversation.id == payload.conversation_id, Conversation.student_id == student.id))

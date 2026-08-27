@@ -31,6 +31,13 @@ class QuestionCreated(BaseModel):
 class AgentMessageCreate(BaseModel):
     conversation_id: str | None = None
     text: str = Field(min_length=1, max_length=2000)
+    license_type: str = Field(default="C1", max_length=3)
+    subject: str = Field(default="subject-1", max_length=16)
+
+
+class LearningContextPatch(BaseModel):
+    license_type: str = Field(max_length=3)
+    subject: str = Field(max_length=16)
 
 
 class AgentMessageResult(BaseModel):

@@ -42,3 +42,15 @@ def test_practice_rejects_invalid_answer(client):
     question = client.get("/api/v1/practice/questions", headers=headers).json()["items"][0]
     response = client.post(f"/api/v1/practice/questions/{question['id']}/answer", headers=headers, json={"answer": "Z"})
     assert response.status_code == 422 and response.json()["error"]["code"] == "INVALID_ANSWER"
+
+
+def test_learning_context_supports_catalog_and_c1_c2_theory_sharing(client):
+    seed_active_bank(); headers = student_headers(client)
+    context = client.patch("/api/v1/me/learning-context", headers=headers, json={"license_type": "C2", "subject": "subject-1"})
+    assert context.status_code == 200 and context.json()["content_available"] is True
+    c2_theory = client.get("/api/v1/practice/questions?license_type=C2&subject=subject-1", headers=headers)
+    assert c2_theory.status_code == 200 and len(c2_theory.json()["items"]) == 2
+    unavailable = client.get("/api/v1/practice/questions?license_type=B2&subject=subject-2", headers=headers)
+    assert unavailable.status_code == 200 and unavailable.json()["items"] == []
+    rejected = client.patch("/api/v1/me/learning-context", headers=headers, json={"license_type": "X9", "subject": "subject-1"})
+    assert rejected.status_code == 422 and rejected.json()["error"]["code"] == "INVALID_LEARNING_CONTEXT"

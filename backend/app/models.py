@@ -51,7 +51,7 @@ class Student(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
     anonymous_id: Mapped[str] = mapped_column(String, unique=True, index=True, default=uid)
     school_id: Mapped[str] = mapped_column(String, default="pilot-school")
-    subject: Mapped[str] = mapped_column(String, default="科目一")
+    subject: Mapped[str] = mapped_column(String, default="subject-1")
     license_type: Mapped[str] = mapped_column(String, default="C1")
     region: Mapped[str] = mapped_column(String, default="全国")
     session_token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)

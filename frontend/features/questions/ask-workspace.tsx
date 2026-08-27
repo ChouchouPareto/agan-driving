@@ -21,6 +21,8 @@ export function AskWorkspace() {
   const savedConversationId = params.get("conversationId") ?? "";
   const savedOCRTaskId = params.get("ocrTaskId") ?? "";
   const isNewConversation = params.get("new") === "1";
+  const licenseType = params.get("license") ?? "C1";
+  const subject = params.get("subject") ?? "subject-1";
   const [conversationId, setConversationId] = useState(savedConversationId);
   const [messages, setMessages] = useState<QuestionDetail[]>([]);
   const [localExchanges, setLocalExchanges] = useState<LocalExchange[]>([]);
@@ -90,7 +92,7 @@ export function AskWorkspace() {
     fetch("/api/backend/knowledge/status", { cache: "no-store" }).then(async response => {
       if (response.ok) setKnowledge(await response.json() as KnowledgeStatus);
     }).catch(() => undefined);
-  }, []);
+  }, [licenseType, subject]);
   useEffect(() => {
     const draft = sessionStorage.getItem("super-driving-draft");
     if (draft && !text) window.setTimeout(() => {
@@ -134,10 +136,11 @@ export function AskWorkspace() {
     if (isBusy || !command) return;
     setError(""); setPendingUser(command); setText(""); setStatus("正在识别你的意图…");
     try {
-      const dispatch = await api.sendAgentMessage(conversationId, command);
+      const dispatch = await api.sendAgentMessage(conversationId, command, licenseType, subject);
       rememberConversation(dispatch.conversation_id);
       if (dispatch.action === "NAVIGATE" && dispatch.destination) {
-        setPendingUser(""); setStatus(""); router.push(dispatch.destination); return;
+        const separator = dispatch.destination.includes("?") ? "&" : "?";
+        setPendingUser(""); setStatus(""); router.push(`${dispatch.destination}${separator}license=${licenseType}&subject=${subject}`); return;
       }
       if (dispatch.action === "RESPOND") {
         setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent }]);
@@ -212,9 +215,9 @@ export function AskWorkspace() {
       {error && <div className="chatError" role="alert">{error}</div>}
     </section>
     <section id="ask-composer" className="chatComposer">
-      <nav className="quickTools" aria-label="快捷学习入口"><Link href="/practice"><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><Link href="/practice?mode=wrong"><History aria-hidden="true"/>错题本</Link><Link href="/practice?mode=favorites"><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={() => setToolsOpen(true)}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
+      <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
       <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级陪驾发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={2000}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/2000</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
-      {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href="/practice"><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><Link href="/practice?mode=wrong"><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href="/practice?mode=favorites"><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button><button type="button" onClick={() => { setText("不懂就问校长"); setToolsOpen(false); }}><span><Sparkles aria-hidden="true"/></span><strong>问校长</strong><small>特殊问题人工处理</small></button></div>}
+      {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button><button type="button" disabled aria-disabled="true"><span><Sparkles aria-hidden="true"/></span><strong>问校长</strong><small>功能暂未开放</small></button></div>}
       <p className="aiDisclaimer">内容由 AI 生成，科目一结论以当前题库依据为准</p>
     </section>
   </div>;
