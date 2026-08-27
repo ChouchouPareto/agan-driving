@@ -246,21 +246,27 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
 .accountAvatar { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; background: #17171b; color: white; font-size: 13px; font-weight: 800; }
 .drawerAccount > div { flex: 1; display: grid; gap: 3px; }
 .drawerAccount small { color: var(--secondary); }
-.learningSelector { flex: 1; min-height: 0; margin: 24px -4px 14px; padding: 18px 4px 12px; border-top: 1px solid var(--border); overflow-y: auto; }
-.selectorHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 8px 14px; }
-.selectorHeading span { font-size: 14px; font-weight: 750; }
-.selectorHeading small { color: var(--primary); font-weight: 700; }
-.licenseSelectLabel { display: block; margin: 0 8px 7px; color: var(--secondary); font-size: 12px; }
-.learningSelector select { width: calc(100% - 16px); min-height: 48px; margin: 0 8px 14px; padding: 0 40px 0 13px; border: 1px solid var(--border); border-radius: 14px; background: white; color: var(--text); font: inherit; font-weight: 650; }
-.learningSelector select:focus-visible { outline: 3px solid rgba(98,93,246,.2); border-color: var(--primary); }
-.stageSelector { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; padding: 0 8px; }
-.stageSelector button { min-height: 58px; padding: 9px 10px; display: grid; align-content: center; gap: 3px; border: 1px solid var(--border); border-radius: 13px; background: #fafafa; color: var(--text); text-align: left; }
-.stageSelector button strong { font-size: 14px; }
-.stageSelector button span { color: var(--secondary); font-size: 11px; }
+.learningSelector { position: relative; margin: auto -4px 12px; padding: 15px 4px 10px; border-top: 1px solid var(--border); }
+.compactLearningHeader { min-height: 46px; padding: 0 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.compactLearningHeader > div { min-width: 0; display: grid; gap: 3px; }
+.compactLearningHeader small { color: var(--secondary); font-size: 11px; }
+.compactLearningHeader strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.compactLearningHeader button { min-width: 64px; min-height: 36px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--border); border-radius: 11px; background: white; color: var(--secondary); font-size: 12px; }
+.compactLearningHeader button:hover { background: var(--soft-surface); color: var(--text); }
+.compactLearningHeader svg { width: 14px; }
+.stageSelector { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px,1fr)); gap: 6px; padding: 0 8px; }
+.stageSelector button { min-width: 0; min-height: 40px; padding: 7px 4px; border: 1px solid var(--border); border-radius: 11px; background: #fafafa; color: var(--secondary); font-size: 12px; font-weight: 650; white-space: nowrap; }
 .stageSelector button.active { border-color: #c8c4ff; background: var(--primary-soft); color: #4741d2; }
-.stageSelector button.active span { color: #625cf6; }
-.catalogAvailability { margin: 12px 8px 0; padding: 9px 10px; border-radius: 10px; background: #f3f3f4; color: var(--secondary); font-size: 11px; line-height: 1.5; }
-.catalogAvailability.available { background: #edf8f2; color: #196d47; }
+.licensePicker { position: absolute; left: 4px; right: 4px; bottom: calc(100% - 4px); z-index: 4; max-height: min(560px, 68vh); padding: 10px; border: 1px solid var(--border); border-radius: 18px; background: white; box-shadow: 0 18px 60px rgba(23,23,27,.18); overflow-y: auto; }
+.licensePickerHeader { position: sticky; top: -10px; z-index: 1; min-height: 48px; padding: 4px 4px 8px 8px; display: flex; align-items: center; justify-content: space-between; background: white; }
+.licensePickerHeader > button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 12px; background: var(--soft-surface); }
+.licensePickerHeader svg { width: 19px; }
+.licensePicker section + section { margin-top: 12px; }
+.licensePicker h3 { margin: 5px 9px; color: #a2a2aa; font-size: 12px; font-weight: 700; }
+.licensePicker section > button { width: 100%; min-height: 42px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; font-size: 14px; font-weight: 600; }
+.licensePicker section > button:hover { background: var(--soft-surface); }
+.licensePicker section > button.selected { background: var(--primary); color: white; }
+.licensePicker section > button svg { width: 18px; flex: 0 0 auto; }
 
 .chatPage { min-height: calc(100dvh - 134px); }
 .chatPage.isWelcome .chatStream { padding: clamp(80px, 14vh, 150px) 8px 30px; }
