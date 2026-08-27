@@ -2,6 +2,7 @@ import { z } from "zod";
 export const evidenceSchema = z.object({ source_type: z.string().optional(), source_id: z.string().optional(), title: z.string(), version: z.string(), excerpt: z.string() });
 export const answerSchema = z.object({ id: z.string(), direct_answer: z.string(), short_reason: z.string(), detail: z.string(), common_mistake: z.string(), evidence: z.array(evidenceSchema), risk_codes: z.array(z.string()).default([]), route: z.string().optional() });
 export const conversationSchema = z.object({ id: z.string(), status: z.string() });
+export const agentDispatchSchema = z.object({ conversation_id: z.string(), intent: z.string(), action: z.enum(["ANSWER", "NAVIGATE", "RESPOND"]), question_id: z.string().nullable(), destination: z.string().nullable(), assistant_message: z.string().nullable(), prompt_version: z.string() });
 export const questionCreatedSchema = z.object({ id: z.string(), request_id: z.string(), status: z.string() });
 export const ticketCreatedSchema = z.object({ id: z.string(), status: z.string() });
 export const ticketMessageSchema = z.object({ id: z.string(), author_type: z.string(), content: z.string(), created_at: z.string() });
@@ -9,6 +10,8 @@ export const ticketEventSchema = z.object({ id: z.string(), event_type: z.string
 export const ticketSchema = z.object({ id: z.string(), status: z.string(), label: z.string(), sla: z.string(), version: z.number().default(1), risk_codes: z.array(z.string()).default([]), assignee_id: z.string().nullable().optional(), created_at: z.string().optional(), updated_at: z.string().optional(), question: z.object({ id: z.string(), text: z.string(), status: z.string() }).nullable().optional(), answer: z.object({ direct_answer: z.string(), short_reason: z.string(), detail: z.string(), common_mistake: z.string(), evidence: z.array(evidenceSchema) }).nullable().optional(), ocr: z.object({ task_id: z.string(), preview_url: z.string() }).nullable().optional(), messages: z.array(ticketMessageSchema).default([]), events: z.array(ticketEventSchema).default([]) });
 export const ticketListSchema = z.object({ items: z.array(ticketSchema), page: z.number(), page_size: z.number(), total: z.number() });
 export const feedbackSchema = z.object({ id: z.string(), type: z.string() });
-export const questionDetailSchema = z.object({ id: z.string(), text: z.string(), status: z.string(), answer: answerSchema.nullable(), ticket: ticketSchema.nullable() });
+export const questionDetailSchema = z.object({ id: z.string(), conversation_id: z.string(), text: z.string(), resolved_text: z.string().nullable(), intent: z.string(), prompt_version: z.string(), status: z.string(), answer: answerSchema.nullable(), ticket: ticketSchema.nullable() });
+export const conversationDetailSchema = z.object({ id: z.string(), status: z.string(), questions: z.array(questionDetailSchema) });
 export type Answer = z.infer<typeof answerSchema>;
 export type Ticket = z.infer<typeof ticketSchema>;
+export type QuestionDetail = z.infer<typeof questionDetailSchema>;

@@ -11,8 +11,10 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import Answer, Conversation, Feedback, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
-from app.schemas import AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
+from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
+from app.pe import classify_intent, resolve_follow_up
+from app.pe.prompts import PROMPT_VERSION
 
 router = APIRouter(prefix="/api/v1")
 
@@ -259,8 +261,63 @@ def get_conversation(conversation_id: str, student: Student = Depends(current_st
     conversation = db.scalar(select(Conversation).where(Conversation.id == conversation_id, Conversation.student_id == student.id))
     if not conversation:
         raise error(404, "NOT_FOUND", "未找到该会话。")
-    questions = db.scalars(select(Question).where(Question.conversation_id == conversation.id)).all()
-    return {"id": conversation.id, "status": conversation.status, "questions": [{"id": q.id, "text": q.raw_text, "status": q.status, "answer_id": q.answer.id if q.answer else None} for q in questions]}
+    questions = db.scalars(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at)).all()
+    return {"id": conversation.id, "status": conversation.status, "questions": [_question_payload(db, q, student) for q in questions]}
+
+
+def _answer_payload(question: Question) -> dict | None:
+    if not question.answer:
+        return None
+    return {
+        "id": question.answer.id, "direct_answer": question.answer.direct_answer,
+        "short_reason": question.answer.short_reason, "detail": question.answer.detail,
+        "common_mistake": question.answer.common_mistake,
+        "evidence": [{"source_type": item.source_type, "source_id": item.source_id, "title": item.title, "version": item.version, "excerpt": item.excerpt} for item in question.answer.evidence],
+        "risk_codes": ["NEEDS_REVIEW"] if question.status == "NEEDS_REVIEW" else [], "route": question.route,
+    }
+
+
+def _question_payload(db: Session, question: Question, student: Student) -> dict:
+    review_ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
+    labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
+    ticket = None if not review_ticket else {"id": review_ticket.id, "status": review_ticket.status, "label": labels.get(review_ticket.status, "状态待确认"), "sla": "问题已进入队列，工作时间内预计2小时处理。"}
+    answer = _answer_payload(question)
+    if answer is not None and review_ticket and question.status == "NEEDS_REVIEW":
+        answer["risk_codes"] = review_ticket.risk_codes
+    return {"id": question.id, "conversation_id": question.conversation_id, "text": question.raw_text, "resolved_text": question.resolved_text, "intent": question.intent, "prompt_version": question.prompt_version, "status": question.status, "answer": answer, "ticket": ticket}
+
+
+@router.post("/agent/messages", response_model=AgentMessageResult)
+def agent_message(payload: AgentMessageCreate, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    conversation = None
+    if payload.conversation_id:
+        conversation = db.scalar(select(Conversation).where(Conversation.id == payload.conversation_id, Conversation.student_id == student.id))
+        if not conversation:
+            raise error(404, "NOT_FOUND", "未找到该会话。")
+    if conversation is None:
+        conversation = Conversation(student_id=student.id)
+        db.add(conversation); db.flush()
+    previous = db.scalar(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at.desc()))
+    context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "FOLLOW_UP").order_by(Question.created_at.desc()))
+    classified = classify_intent(payload.text, previous is not None)
+    destinations = {"START_PRACTICE": "/practice", "WRONG_QUESTIONS": "/practice?mode=wrong", "FAVORITES": "/practice?mode=favorites"}
+    if classified.intent in destinations:
+        db.commit()
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="NAVIGATE", destination=destinations[classified.intent], assistant_message="好的，已为你打开对应的练习。", prompt_version=PROMPT_VERSION)
+    canned = {
+        "SENSITIVE_CONTENT": "请不要发送身份证、缴费单或财务信息。你可以只提供题干和选项。",
+        "SCHOOL_SERVICE": "我目前专注科目一学习；报名、缴费或教练安排请使用‘不懂就问校长’。",
+        "HUMAN_HELP": "可以提交给校长。请先发送需要处理的具体题目或问题，我会连同上下文一起提交。",
+        "LEARNING_PROGRESS": "学习进度已记录在刷题数据中。打开刷题页可查看已做题数、正确率和错题数。",
+        "OUT_OF_SCOPE": "我现在主要帮你学科目一。你可以发题目、问交通规则，或直接说‘我要刷题’。",
+    }
+    if classified.intent in canned:
+        db.commit()
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="RESPOND", assistant_message=canned[classified.intent], prompt_version=PROMPT_VERSION)
+    resolved = resolve_follow_up(payload.text, context_question.raw_text if context_question else None) if classified.intent == "FOLLOW_UP" else payload.text.strip()
+    question = Question(conversation_id=conversation.id, raw_text=payload.text.strip(), resolved_text=resolved, intent=classified.intent, prompt_version=PROMPT_VERSION)
+    db.add(question); db.commit()
+    return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="ANSWER", question_id=question.id, prompt_version=PROMPT_VERSION)
 
 
 @router.post("/questions", response_model=QuestionCreated)
@@ -287,23 +344,7 @@ def get_question(question_id: str, student: Student = Depends(current_student), 
     question = db.scalar(select(Question).join(Conversation).where(Question.id == question_id, Conversation.student_id == student.id))
     if not question:
         raise error(404, "NOT_FOUND", "未找到该问题。")
-    answer = None
-    if question.answer:
-        answer = {
-            "id": question.answer.id, "direct_answer": question.answer.direct_answer,
-            "short_reason": question.answer.short_reason, "detail": question.answer.detail,
-            "common_mistake": question.answer.common_mistake,
-            "evidence": [{"source_type": item.source_type, "source_id": item.source_id, "title": item.title, "version": item.version, "excerpt": item.excerpt} for item in question.answer.evidence],
-            "risk_codes": [], "route": question.route,
-        }
-    review_ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
-    ticket = None
-    if review_ticket:
-        labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
-        ticket = {"id": review_ticket.id, "status": review_ticket.status, "label": labels.get(review_ticket.status, "状态待确认"), "sla": "问题已进入队列，工作时间内预计2小时处理。"}
-    if answer is not None and question.status == "NEEDS_REVIEW":
-        answer["risk_codes"] = review_ticket.risk_codes if review_ticket else ["NEEDS_REVIEW"]
-    return {"id": question.id, "text": question.raw_text, "status": question.status, "answer": answer, "ticket": ticket}
+    return _question_payload(db, question, student)
 
 
 @router.get("/questions/{question_id}/stream")

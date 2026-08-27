@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { API_ROOT, idempotencyKey, request } from "@/lib/api/client";
-import { answerSchema, conversationSchema, feedbackSchema, questionCreatedSchema, questionDetailSchema, ticketCreatedSchema, ticketSchema } from "@/lib/schemas/domain";
+import { agentDispatchSchema, answerSchema, conversationDetailSchema, conversationSchema, feedbackSchema, questionCreatedSchema, questionDetailSchema, ticketCreatedSchema, ticketSchema } from "@/lib/schemas/domain";
 export const createConversation = () => request("/conversations", conversationSchema, { method: "POST", body: "{}", headers: { "Idempotency-Key": idempotencyKey() } });
 export const createQuestion = (conversationId: string, text: string) => request("/questions", questionCreatedSchema, { method: "POST", body: JSON.stringify({ conversation_id: conversationId, text }), headers: { "Idempotency-Key": idempotencyKey() } });
+export const sendAgentMessage = (conversationId: string, text: string) => request("/agent/messages", agentDispatchSchema, { method: "POST", body: JSON.stringify({ conversation_id: conversationId || null, text }) });
+export const getConversation = (conversationId: string) => request(`/conversations/${conversationId}`, conversationDetailSchema);
 export const streamQuestion = (questionId: string, signal?: AbortSignal) => fetch(`${API_ROOT}/questions/${questionId}/stream`, { signal });
 export const getQuestion = (questionId: string) => request(`/questions/${questionId}`, questionDetailSchema);
 export const sendFeedback = (answerId: string, type: string) => request(`/answers/${answerId}/feedback`, feedbackSchema, { method: "POST", body: JSON.stringify({ type }) });

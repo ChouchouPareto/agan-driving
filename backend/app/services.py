@@ -105,15 +105,16 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
     db.commit()
     conversation = db.get(Conversation, question.conversation_id)
     student = db.get(Student, conversation.student_id) if conversation else None
-    match = retrieve(db, question.raw_text, student.school_id, student.region, student.license_type, question.id) if student and get_settings().rag_enabled else None
-    match = match or standard_match(question.raw_text)
+    query_text = question.resolved_text or question.raw_text
+    match = retrieve(db, query_text, student.school_id, student.region, student.license_type, question.id) if student and get_settings().rag_enabled else None
+    match = match or standard_match(query_text)
     question.route = "standard_question" if match else "open_theory"
     question.status = QuestionStatus.RETRIEVING.value
     db.commit()
     try:
         question.status = QuestionStatus.GENERATING.value
         db.commit()
-        payload = AIService().answer(question.raw_text, match, explain_again)
+        payload = AIService().answer(query_text, match, explain_again or question.intent == "FOLLOW_UP")
         question.status = QuestionStatus.VALIDATING.value
         db.commit()
         if payload.route == "standard_question" and (not match or payload.direct_answer != match["answer"]):
@@ -137,7 +138,7 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
                 db.delete(item)
         for item in payload.evidence:
             db.add(Evidence(answer_id=answer.id, **item.model_dump()))
-        db.add(AITrace(question_id=question.id, model_id=get_settings().main_model_id, prompt_version="v1", workflow_version="mock-v1" if get_settings().mock_ai else get_settings().dify_workflow_id, latency_ms=int((time.monotonic() - started) * 1000), token_usage=0, is_mock=get_settings().mock_ai))
+        db.add(AITrace(question_id=question.id, model_id=get_settings().main_model_id, prompt_version=question.prompt_version, workflow_version="agent-loop-v1", latency_ms=int((time.monotonic() - started) * 1000), token_usage=0, is_mock=get_settings().mock_ai))
         db.commit()
         payload.id = answer.id
         return payload

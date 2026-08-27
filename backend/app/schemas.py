@@ -28,6 +28,21 @@ class QuestionCreated(BaseModel):
     status: str
 
 
+class AgentMessageCreate(BaseModel):
+    conversation_id: str | None = None
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class AgentMessageResult(BaseModel):
+    conversation_id: str
+    intent: str
+    action: Literal["ANSWER", "NAVIGATE", "RESPOND"]
+    question_id: str | None = None
+    destination: str | None = None
+    assistant_message: str | None = None
+    prompt_version: str
+
+
 class EvidenceOut(BaseModel):
     source_type: str
     source_id: str

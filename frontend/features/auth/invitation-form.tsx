@@ -5,7 +5,13 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 
 export function InvitationForm() {
   const router = useRouter(); const [code, setCode] = useState("INVITE_CODE_REMOVED"); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
-  useEffect(() => { localStorage.removeItem("access_token"); fetch("/api/session").then(r => r.json()).then(v => { if (v.authenticated) router.replace("/ask"); }).catch(() => undefined); }, [router]);
+  useEffect(() => {
+    localStorage.removeItem("access_token");
+    fetch("/api/backend/me").then(async response => {
+      if (response.ok) router.replace("/ask");
+      else await fetch("/api/session", { method: "DELETE" });
+    }).catch(() => undefined);
+  }, [router]);
   async function submit(event: FormEvent) {
     event.preventDefault(); setError(""); setBusy(true);
     try { const response = await fetch("/api/backend/auth/invitations/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? "邀请码无效或已失效。"); router.replace("/ask"); }

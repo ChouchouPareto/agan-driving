@@ -23,11 +23,13 @@ class Settings(BaseSettings):
     dify_api_key: str = ""
     dify_workflow_id: str = ""
     main_model_id: str = "mock-main"
+    light_model_id: str = "qwen3.6-flash"
     model_timeout_seconds: int = 30
     model_max_retries: int = 1
     dashscope_api_key: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     ocr_model_id: str = "qwen-vl-ocr"
+    pe_prompt_version: str = "pe-v1.0"
     ocr_storage_dir: str = "../data/private-assets"
     ocr_max_image_bytes: int = 10 * 1024 * 1024
     ocr_max_pixels: int = 24_000_000
