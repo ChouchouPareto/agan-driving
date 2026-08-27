@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import router
 from app.staff_api import router as staff_router
+from app.knowledge_api import router as knowledge_router
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.services import seed
@@ -23,6 +24,7 @@ app = FastAPI(title="驾校科目一智能助教 API", version="0.1.0", lifespan
 app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins.split(","), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
 app.include_router(staff_router)
+app.include_router(knowledge_router)
 
 
 @app.exception_handler(RequestValidationError)

@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models import AITrace, Answer, Evidence, InvitationCode, Question, QuestionStatus, Student
+from app.models import AITrace, Answer, Conversation, Evidence, InvitationCode, Question, QuestionStatus, Student
 from app.schemas import AnswerPayload, EvidenceOut
+from app.knowledge.service import retrieve
 
 
 def digest(value: str) -> str:
@@ -70,7 +71,7 @@ class AIService:
                 short_reason=match["reason"],
                 detail=detail,
                 common_mistake=match["mistake"],
-                evidence=[EvidenceOut(source_type="question_bank", source_id=match["source_id"], title=match["title"], version="seed-v1", excerpt=match["excerpt"])],
+                evidence=[EvidenceOut(source_type="question_bank", source_id=match["source_id"], title=match["title"], version=match.get("knowledge_version", "seed-v1"), excerpt=match["excerpt"])],
                 route="standard_question",
             )
         if self.settings.mock_ai:
@@ -102,7 +103,10 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
     started = time.monotonic()
     question.status = QuestionStatus.ROUTING.value
     db.commit()
-    match = standard_match(question.raw_text)
+    conversation = db.get(Conversation, question.conversation_id)
+    student = db.get(Student, conversation.student_id) if conversation else None
+    match = retrieve(db, question.raw_text, student.school_id, student.region, student.license_type, question.id) if student and get_settings().rag_enabled else None
+    match = match or standard_match(question.raw_text)
     question.route = "standard_question" if match else "open_theory"
     question.status = QuestionStatus.RETRIEVING.value
     db.commit()
@@ -165,4 +169,3 @@ def authenticate_invitation(db: Session, code: str) -> tuple[Student, str] | Non
         invitation.student_id = student.id
     db.commit()
     return student, token
-

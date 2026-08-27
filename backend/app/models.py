@@ -243,3 +243,94 @@ class OCRAuditLog(Base):
     after_value: Mapped[str | None] = mapped_column(Text, nullable=True)
     request_id: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class KnowledgeSource(Base):
+    __tablename__ = "knowledge_sources"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    supplier: Mapped[str] = mapped_column(String)
+    license_scope: Mapped[str] = mapped_column(String, default="test-only")
+    source_hash: Mapped[str] = mapped_column(String, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class KnowledgeVersion(Base):
+    __tablename__ = "knowledge_versions"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    source_id: Mapped[str] = mapped_column(ForeignKey("knowledge_sources.id"), index=True)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    version_label: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="VALIDATING", index=True)
+    region: Mapped[str] = mapped_column(String, default="全国")
+    license_type: Mapped[str] = mapped_column(String, default="C1")
+    schema_version: Mapped[str] = mapped_column(String, default="1")
+    normalizer_version: Mapped[str] = mapped_column(String, default="1")
+    embedding_model: Mapped[str] = mapped_column(String, default="text-embedding-v4")
+    embedding_dimensions: Mapped[int] = mapped_column(Integer, default=1024)
+    collection_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_count: Mapped[int] = mapped_column(Integer, default=0)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class StandardQuestion(Base):
+    __tablename__ = "standard_questions"
+    __table_args__ = (UniqueConstraint("knowledge_version_id", "external_id"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    knowledge_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    external_id: Mapped[str] = mapped_column(String)
+    stem: Mapped[str] = mapped_column(Text)
+    normalized_stem: Mapped[str] = mapped_column(Text)
+    stem_fingerprint: Mapped[str] = mapped_column(String, index=True)
+    options: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    options_fingerprint: Mapped[str] = mapped_column(String, index=True)
+    standard_answer: Mapped[str] = mapped_column(String)
+    explanation: Mapped[str] = mapped_column(Text)
+    knowledge_points: Mapped[list[str]] = mapped_column(JSON, default=list)
+    question_type: Mapped[str] = mapped_column(String)
+    region: Mapped[str] = mapped_column(String, default="全国")
+    license_type: Mapped[str] = mapped_column(String, default="C1")
+    status: Mapped[str] = mapped_column(String, default="VALID", index=True)
+
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    question_id: Mapped[str] = mapped_column(ForeignKey("standard_questions.id"), unique=True, index=True)
+    knowledge_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String, index=True)
+    embedding_status: Mapped[str] = mapped_column(String, default="PENDING")
+    vector_record_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class KnowledgeValidationIssue(Base):
+    __tablename__ = "knowledge_validation_issues"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    knowledge_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    external_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    row_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    issue_type: Mapped[str] = mapped_column(String)
+    severity: Mapped[str] = mapped_column(String)
+    safe_message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String, default="OPEN")
+    resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class RetrievalTrace(Base):
+    __tablename__ = "retrieval_traces"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    question_id: Mapped[str | None] = mapped_column(ForeignKey("questions.id"), nullable=True, index=True)
+    knowledge_version_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_versions.id"), nullable=True)
+    query_hash: Mapped[str] = mapped_column(String, index=True)
+    match_type: Mapped[str] = mapped_column(String)
+    candidate_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    final_evidence_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    error_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

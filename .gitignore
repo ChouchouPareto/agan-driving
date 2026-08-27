@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 data/*.db
 data/private-assets/
+data/rag/
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local

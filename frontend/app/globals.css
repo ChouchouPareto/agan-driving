@@ -84,6 +84,11 @@ summary { cursor: pointer; font-weight: 600; }
 .timeline li { border-left: 2px solid #d9d7ff; padding: 0 0 20px 18px; display: flex; justify-content: space-between; gap: 16px; }
 .timeline li span { color: var(--secondary); font-size: 12px; }
 .emptyState { text-align: center; color: var(--secondary); padding: 48px; }
+.staffNav { display: flex; align-items: center; gap: 20px; }
+.issueList { display: grid; gap: 10px; margin-top: 16px; }
+.issueRow { border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.issueRow strong { display: block; margin-top: 10px; }
+.issueRow p { margin-bottom: 0; color: var(--secondary); }
 .ocrCard h2 { margin: 5px 0 0; font-size: 20px; }
 .questionComposer { overflow: hidden; }
 .ocrPanel { margin-top: -44px; width: fit-content; max-width: calc(100% - 150px); position: relative; z-index: 1; }

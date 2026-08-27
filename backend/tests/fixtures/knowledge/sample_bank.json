@@ -1,0 +1,4 @@
+[
+  {"external_id":"TEST-001","stem":"驾驶机动车通过没有交通信号的交叉路口怎样行驶？","question_type":"single_choice","options":[{"label":"A","text":"加速通过"},{"label":"B","text":"减速慢行，并让右方道路来车先行"},{"label":"C","text":"鸣笛后直接通过"}],"standard_answer":"B","explanation":"无信号路口应减速观察；无标志、标线控制时，让右方道路来车先行。","knowledge_points":["无信号路口","让行规则"]},
+  {"external_id":"TEST-002","stem":"机动车在道路上发生故障难以移动时，首先应当怎么做？","question_type":"single_choice","options":[{"label":"A","text":"持续开启危险报警闪光灯"},{"label":"B","text":"立即离开车辆"},{"label":"C","text":"原地等待"}],"standard_answer":"A","explanation":"车辆难以移动时，首先持续开启危险报警闪光灯，让其他交通参与者及时发现危险。","knowledge_points":["车辆故障","安全警示"]}
+]
