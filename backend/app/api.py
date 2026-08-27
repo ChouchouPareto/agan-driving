@@ -2,16 +2,16 @@ import json
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models import Answer, Conversation, Feedback, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, UploadedAsset
+from app.models import Answer, Conversation, Feedback, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
-from app.schemas import AuthResult, ConversationCreate, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, QuestionCreate, QuestionCreated, TicketCreate
+from app.schemas import AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
 
 router = APIRouter(prefix="/api/v1")
@@ -79,13 +79,46 @@ def me(student: Student = Depends(current_student)):
     return {"id": student.id, "anonymous_id": student.anonymous_id, "subject": student.subject, "license_type": student.license_type, "region": student.region}
 
 
+def _practice_summary(db: Session, student: Student, version: KnowledgeVersion) -> dict:
+    rows = db.scalars(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.knowledge_version_id == version.id)).all()
+    attempted = sum(1 for row in rows if row.attempts); correct = sum(row.correct_attempts for row in rows); attempts = sum(row.attempts for row in rows)
+    return {"attempted": attempted, "correct_attempts": correct, "total_attempts": attempts, "wrong_count": sum(1 for row in rows if row.last_correct is False), "favorite_count": sum(1 for row in rows if row.is_favorite), "accuracy": correct / attempts if attempts else 0}
+
+
 @router.get("/practice/questions")
-def practice_questions(student: Student = Depends(current_student), db: Session = Depends(get_db)):
+def practice_questions(mode: str = Query(default="all", pattern="^(all|wrong|favorites)$"), student: Student = Depends(current_student), db: Session = Depends(get_db)):
     version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == student.license_type).order_by(KnowledgeVersion.activated_at.desc()))
     if not version:
-        return {"items": [], "knowledge_version": None}
-    items = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID").order_by(StandardQuestion.external_id).limit(20)).all()
-    return {"knowledge_version": version.version_label, "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "standard_answer": item.standard_answer, "explanation": item.explanation} for item in items]}
+        return {"items": [], "knowledge_version": None, "summary": {"attempted": 0, "correct_attempts": 0, "total_attempts": 0, "wrong_count": 0, "favorite_count": 0, "accuracy": 0}}
+    progress_rows = db.scalars(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.knowledge_version_id == version.id)).all(); progress = {row.standard_question_id: row for row in progress_rows}
+    items = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID").order_by(StandardQuestion.external_id)).all()
+    if mode == "wrong": items = [item for item in items if progress.get(item.id) and progress[item.id].last_correct is False]
+    if mode == "favorites": items = [item for item in items if progress.get(item.id) and progress[item.id].is_favorite]
+    return {"knowledge_version": version.version_label, "summary": _practice_summary(db, student, version), "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "attempted": bool(progress.get(item.id) and progress[item.id].attempts), "last_correct": progress[item.id].last_correct if progress.get(item.id) else None, "is_favorite": progress[item.id].is_favorite if progress.get(item.id) else False} for item in items[:200]]}
+
+
+@router.post("/practice/questions/{question_id}/answer")
+def answer_practice_question(question_id: str, payload: PracticeAnswer, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    question = db.get(StandardQuestion, question_id); version = db.get(KnowledgeVersion, question.knowledge_version_id) if question else None
+    if not question or not version or version.status != "ACTIVE" or version.school_id != student.school_id: raise error(404, "NOT_FOUND", "未找到该练习题。")
+    selected = payload.answer.strip(); valid_answers = {str(option.get("label", "")) for option in question.options}
+    if selected not in valid_answers: raise error(422, "INVALID_ANSWER", "请选择有效答案。")
+    progress = db.scalar(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.standard_question_id == question.id))
+    if not progress:
+        progress = StudentQuestionProgress(student_id=student.id, standard_question_id=question.id, knowledge_version_id=version.id, attempts=0, correct_attempts=0, wrong_attempts=0, is_favorite=False); db.add(progress)
+    correct = selected == question.standard_answer; progress.attempts += 1; progress.correct_attempts += int(correct); progress.wrong_attempts += int(not correct); progress.last_answer = selected; progress.last_correct = correct; progress.last_answered_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"correct": correct, "standard_answer": question.standard_answer, "explanation": question.explanation, "is_favorite": progress.is_favorite, "summary": _practice_summary(db, student, version)}
+
+
+@router.patch("/practice/questions/{question_id}/favorite")
+def favorite_practice_question(question_id: str, payload: FavoritePatch, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    question = db.get(StandardQuestion, question_id); version = db.get(KnowledgeVersion, question.knowledge_version_id) if question else None
+    if not question or not version or version.status != "ACTIVE" or version.school_id != student.school_id: raise error(404, "NOT_FOUND", "未找到该练习题。")
+    progress = db.scalar(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.standard_question_id == question.id))
+    if not progress: progress = StudentQuestionProgress(student_id=student.id, standard_question_id=question.id, knowledge_version_id=version.id, attempts=0, correct_attempts=0, wrong_attempts=0, is_favorite=False); db.add(progress)
+    progress.is_favorite = payload.is_favorite; db.commit()
+    return {"question_id": question.id, "is_favorite": progress.is_favorite, "summary": _practice_summary(db, student, version)}
 
 
 @router.post("/conversations")

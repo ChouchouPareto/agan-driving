@@ -85,3 +85,11 @@ class OCRFieldsPatch(BaseModel):
 
 class OCRConfirm(BaseModel):
     conversation_id: str | None = None
+
+
+class PracticeAnswer(BaseModel):
+    answer: str = Field(min_length=1, max_length=16)
+
+
+class FavoritePatch(BaseModel):
+    is_favorite: bool

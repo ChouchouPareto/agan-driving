@@ -127,7 +127,15 @@ summary { cursor: pointer; font-weight: 600; }
 .sectionDivider { display: flex; align-items: center; gap: 12px; color: var(--secondary); font-size: 13px; margin: 6px 0 16px; }
 .sectionDivider::before, .sectionDivider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
 .practiceTop { display: flex; justify-content: space-between; align-items: center; color: var(--secondary); }
+.practiceSummary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.practiceSummary div { display: grid; gap: 4px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.practiceSummary strong { font-size: 20px; }
+.practiceSummary span { color: var(--secondary); font-size: 12px; }
 .questionNumber { color: var(--primary); font-size: 13px; font-weight: 700; }
+.practiceQuestionMeta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.favoriteButton { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--secondary); display: inline-flex; align-items: center; gap: 6px; }
+.favoriteButton:hover { background: var(--primary-soft); color: var(--primary); }
+.favoriteButton.active { color: #b12b50; background: #fff0f4; }
 .practiceCard h2 { font-size: 21px; line-height: 1.55; margin: 12px 0 20px; }
 .optionList { display: grid; gap: 10px; }
 .practiceOption { width: 100%; min-height: 56px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--text); }
@@ -140,6 +148,7 @@ summary { cursor: pointer; font-weight: 600; }
 .practiceResult p { margin: 6px 0 0; }
 .correctResult { background: #eef9f3; color: #116a3e; }
 .wrongResult { background: #fff2f3; color: #a72b39; }
+.askAiButton { width: fit-content; margin-top: 12px; background: white; color: var(--primary); border: 1px solid #d8d5ff; text-decoration: none; }
 .practiceActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .practiceHint { color: var(--secondary); font-size: 13px; }
 @keyframes pulse { 50% { opacity: .35; } }
@@ -147,5 +156,5 @@ summary { cursor: pointer; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }
-@media (max-width: 600px) { .learningEntrances { grid-template-columns: 1fr; } .learningEntrance { min-height: 82px; } .composerFooter { flex-direction: column; } .composerActions { width: 100%; justify-content: space-between; } .composerActions .button { flex: 1; } .ocrPanel { max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { border-top: 1px solid var(--border); padding-top: 10px; justify-content: space-between; } .uploadMeta { text-align: right; } }
+@media (max-width: 600px) { .learningEntrances { grid-template-columns: 1fr; } .learningEntrance { min-height: 82px; } .composerFooter { flex-direction: column; } .composerActions { width: 100%; justify-content: space-between; } .composerActions .button { flex: 1; } .ocrPanel { max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { border-top: 1px solid var(--border); padding-top: 10px; justify-content: space-between; } .uploadMeta { text-align: right; } .practiceSummary { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 800px) { .staffMain { width: min(100% - 24px, 720px); padding-top: 24px; } .ticketGrid, .detailGrid { grid-template-columns: 1fr; } .detailGrid aside { position: static; } .detailHeader { align-items: flex-start; flex-direction: column; } .detailHeader .button { width: 100%; } .queueTime { float: none; display: block; margin-top: 8px; } }

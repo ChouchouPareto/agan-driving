@@ -398,3 +398,21 @@ class KnowledgeActivationEvent(Base):
     to_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
     request_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class StudentQuestionProgress(Base):
+    __tablename__ = "student_question_progress"
+    __table_args__ = (UniqueConstraint("student_id", "standard_question_id"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    standard_question_id: Mapped[str] = mapped_column(ForeignKey("standard_questions.id"), index=True)
+    knowledge_version_id: Mapped[str] = mapped_column(ForeignKey("knowledge_versions.id"), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    correct_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    wrong_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_answer: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

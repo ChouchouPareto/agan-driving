@@ -13,8 +13,9 @@ export function AskWorkspace() {
   const router = useRouter(); const params = useSearchParams();
   const savedQuestionId = params.get("questionId") ?? "";
   const savedOCRTaskId = params.get("ocrTaskId") ?? "";
+  const practiceQuestion = params.get("text") ?? "";
   const [conversationId, setConversationId] = useState(""); const [questionId, setQuestionId] = useState(savedQuestionId);
-  const [text, setText] = useState("驾驶机动车通过没有交通信号的交叉路口怎样行驶？"); const [answer, setAnswer] = useState<Answer | null>(null); const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [text, setText] = useState(practiceQuestion || "驾驶机动车通过没有交通信号的交叉路口怎样行驶？"); const [answer, setAnswer] = useState<Answer | null>(null); const [ticket, setTicket] = useState<Ticket | null>(null);
   const [status, setStatus] = useState(savedQuestionId ? "正在恢复上次问题…" : ""); const [error, setError] = useState(""); const controller = useRef<AbortController | null>(null);
   const canResumeQuestion = ["题目已确认，可以提交生成可信回答。", "问题已提交，可以重新发起回答。"].includes(status);
   useEffect(() => { if (savedQuestionId) { api.getQuestion(savedQuestionId).then(detail => { setText(detail.text); setAnswer(detail.answer); setTicket(detail.ticket); setStatus(detail.answer || detail.ticket ? "" : "问题已提交，可以重新发起回答。"); }).catch(reason => { setStatus(""); setError(reason instanceof Error ? reason.message : "恢复失败"); }); } return () => controller.current?.abort(); }, [savedQuestionId]);
