@@ -189,7 +189,7 @@ export function AskWorkspace() {
         {question.intent === "FOLLOW_UP" && <span className="intentBadge">已结合上一题理解</span>}
         {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
       </div>)}
-      {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级陪驾 · {item.intent}</span><p>{item.assistant}</p></div></div></div>)}
+      {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级陪驾 · 学车伙伴</span><p>{item.assistant}</p></div></div></div>)}
       {status && <div className="assistantMessage compact" aria-live="polite"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div className="status"><span className="dot"/>{status}</div></div>}
       {error && <div className="chatError" role="alert">{error}</div>}
       <div ref={streamEnd}/>

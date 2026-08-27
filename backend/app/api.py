@@ -244,6 +244,11 @@ def confirm_ocr_task(task_id: str, payload: OCRConfirm, idempotency_key: str | N
     options = [f"{item.label or ''}. {(item.corrected_value or item.original_value).strip()}" for item in fields if item.field_type == "option"]
     if options:
         text = text + "\n" + "\n".join(options)
+    safety_intent = classify_intent(text, False).intent
+    if safety_intent == "SENSITIVE_CONTENT":
+        raise error(422, "SENSITIVE_CONTENT", "图片中可能包含敏感信息，请只保留题目区域后重新上传。")
+    if safety_intent == "PROMPT_INJECTION":
+        raise error(422, "UNSAFE_INSTRUCTION", "图片内容包含异常指令，未进入问答模型。请只保留真实题目。")
     request_id = idempotency_key or f"ocr-confirm-{task.id}"
     question = Question(conversation_id=conversation.id, raw_text=text, request_id=request_id)
     db.add(question)
@@ -305,11 +310,16 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
         db.commit()
         return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="NAVIGATE", destination=destinations[classified.intent], assistant_message="好的，已为你打开对应的练习。", prompt_version=PROMPT_VERSION)
     canned = {
-        "SENSITIVE_CONTENT": "请不要发送身份证、缴费单或财务信息。你可以只提供题干和选项。",
-        "SCHOOL_SERVICE": "我目前专注科目一学习；报名、缴费或教练安排请使用‘不懂就问校长’。",
-        "HUMAN_HELP": "可以提交给校长。请先发送需要处理的具体题目或问题，我会连同上下文一起提交。",
-        "LEARNING_PROGRESS": "学习进度已记录在刷题数据中。打开刷题页可查看已做题数、正确率和错题数。",
-        "OUT_OF_SCOPE": "我现在主要帮你学科目一。你可以发题目、问交通规则，或直接说‘我要刷题’。",
+        "GREETING": "嗨，我在呢。今天想刷几道题，还是有哪道题没弄明白？",
+        "CHITCHAT": "我就是你的学车伙伴“超级陪驾”。可以陪你聊学车、讲题、复习错题，也能在你紧张的时候一起把问题慢慢拆开。",
+        "EMOTIONAL_SUPPORT": "听起来你现在有点不好受。我在这儿陪你。愿意说说是练车、考试还是别的事情让你不开心吗？如果暂时不想说，我们也可以先做一道简单题找找状态。",
+        "THANKS": "不用客气，我们是学车搭子。你想继续问、刷几道题，或者先歇一会儿都可以。",
+        "SENSITIVE_CONTENT": "先保护好你的隐私：不要发送身份证、手机号、银行卡、验证码或缴费单。只保留题干和选项就够了，这些内容也不会进入问答模型。",
+        "PROMPT_INJECTION": "这段内容像是在要求我改变规则或泄露内部信息，我不会执行。我们可以继续聊学车、讲题，或者直接开始刷题。",
+        "SCHOOL_SERVICE": "这类驾校服务问题我暂时处理不了，不过我可以帮你整理清楚，再通过“不懂就问校长”提交。",
+        "HUMAN_HELP": "可以，我们把问题整理清楚后提交给校长。你把具体情况告诉我就行，记得不要发送身份证、缴费单等敏感信息。",
+        "LEARNING_PROGRESS": "你的刷题进度已经记下来了。去刷题页可以看到已做题数、正确率和错题；如果你愿意，我也可以直接带你复习薄弱点。",
+        "OUT_OF_SCOPE": "这个我未必专业，但可以陪你聊一会儿。如果和学车有关，你可以直接说题目、说困惑，或者让我带你刷题。",
     }
     if classified.intent in canned:
         db.commit()
@@ -322,6 +332,11 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
 
 @router.post("/questions", response_model=QuestionCreated)
 def submit_question(payload: QuestionCreate, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    safety_intent = classify_intent(payload.text, False).intent
+    if safety_intent == "SENSITIVE_CONTENT":
+        raise error(422, "SENSITIVE_CONTENT", "请移除身份证、手机号、银行卡、验证码等敏感信息后再提问。")
+    if safety_intent == "PROMPT_INJECTION":
+        raise error(422, "UNSAFE_INSTRUCTION", "内容包含异常指令，未进入问答模型。")
     conversation = db.scalar(select(Conversation).where(Conversation.id == payload.conversation_id, Conversation.student_id == student.id))
     if not conversation:
         raise error(404, "NOT_FOUND", "未找到该会话。")

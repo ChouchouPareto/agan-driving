@@ -10,7 +10,8 @@ from app.pe.prompts import INTENT_CLASSIFIER_PROMPT
 INTENTS = {
     "QUESTION_ANSWER", "FOLLOW_UP", "START_PRACTICE", "WRONG_QUESTIONS",
     "FAVORITES", "LEARNING_PROGRESS", "SCHOOL_SERVICE", "HUMAN_HELP",
-    "OUT_OF_SCOPE", "SENSITIVE_CONTENT",
+    "GREETING", "CHITCHAT", "EMOTIONAL_SUPPORT", "THANKS",
+    "OUT_OF_SCOPE", "SENSITIVE_CONTENT", "PROMPT_INJECTION",
 }
 
 
@@ -23,8 +24,18 @@ class IntentResult:
 
 def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
     value = text.strip()
+    compact = re.sub(r"[\s-]", "", value)
+    if re.search(r"忽略.{0,10}(之前|以上|系统|所有).{0,10}(指令|提示)|系统提示词|开发者消息|越狱|jailbreak|绕过.{0,10}(规则|限制|安全)|泄露.{0,10}(提示词|密钥|配置)|输出.{0,10}(系统|隐藏).{0,10}(提示词|指令)|扮演.{0,20}(不受限制|开发者模式)", value, re.I):
+        return IntentResult("PROMPT_INJECTION", 0.99, "security_rule")
+    if (
+        re.search(r"身份证|银行卡|缴费单|付款码|财务信息|家庭住址|登录密码|短信验证码|支付密码", value)
+        or re.search(r"(?<!\d)1[3-9]\d{9}(?!\d)", compact)
+        or re.search(r"(?<!\d)\d{17}[\dXx](?!\d)", compact)
+        or re.search(r"(?<!\d)\d{16,19}(?!\d)", compact)
+        or re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", value)
+    ):
+        return IntentResult("SENSITIVE_CONTENT", 0.99, "security_rule")
     rules = [
-        (r"身份证|银行卡|缴费单|付款码|财务信息", "SENSITIVE_CONTENT"),
         (r"错题", "WRONG_QUESTIONS"),
         (r"收藏", "FAVORITES"),
         (r"刷题|练题|顺序练习|开始练习|做题", "START_PRACTICE"),
@@ -35,7 +46,15 @@ def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
     for pattern, intent in rules:
         if re.search(pattern, value):
             return IntentResult(intent, 0.99, "rule")
-    if has_context and (len(value) <= 18 or re.search(r"为什么|怎么理解|没看懂|还是不懂|再讲|上一题|这题|那题|什么意思", value)):
+    if re.fullmatch(r"(?:你好|您好|嗨|哈喽|hello|hi|早上好|下午好|晚上好)[！!。,.，\s]*", value, re.I):
+        return IntentResult("GREETING", 0.99, "rule")
+    if re.search(r"谢谢|感谢|辛苦了|明白了|知道了|懂了", value):
+        return IntentResult("THANKS", 0.96, "rule")
+    if re.search(r"不开心|难过|焦虑|紧张|害怕|压力大|好烦|烦死|崩溃|好累|不想学|考不过|没信心", value):
+        return IntentResult("EMOTIONAL_SUPPORT", 0.98, "rule")
+    if re.search(r"你是谁|你能做什么|陪我聊|聊会儿|无聊|讲个笑话", value):
+        return IntentResult("CHITCHAT", 0.95, "rule")
+    if has_context and re.search(r"^(?:为什么|为啥|怎么理解|没看懂|还是不懂|再讲(?:一次|一遍)?|换个说法|上一题|这题|那题|这个答案|什么意思|然后呢|所以呢)", value):
         return IntentResult("FOLLOW_UP", 0.96, "rule")
     if re.search(r"题|驾驶|机动车|交通|道路|车道|标志|扣分|罚款|速度|路口", value):
         return IntentResult("QUESTION_ANSWER", 0.9, "rule")
