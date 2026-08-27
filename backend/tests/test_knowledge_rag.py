@@ -23,6 +23,7 @@ def test_import_index_activate_and_retrieve():
         activate(db, version.id)
         result = retrieve(db, "驾驶机动车通过没有交通信号的交叉路口怎样行驶？", "pilot-school", "全国", "C1")
         assert result and result["answer"].startswith("B.") and result["standard_answer"] == "B" and result["knowledge_version"] == "test-v1"
+        assert retrieve(db, "道路上随便问一个完全不相关的问题", "pilot-school", "全国", "C1") is None
 
 
 def test_activation_requires_a_passed_evaluation():
@@ -51,3 +52,18 @@ def test_invalid_bank_is_blocked(tmp_path):
     with SessionLocal() as db:
         version = import_bank(db, path, name="坏题库", supplier="test", version_label="bad-v1")
         assert version.status == "BLOCKED" and version.error_count > 0
+
+
+def test_same_stem_with_different_options_is_disambiguated_by_full_question(tmp_path):
+    rows = [
+        {"external_id":"a","stem":"同一道题？","question_type":"single_choice","options":[{"label":"A","text":"甲"},{"label":"B","text":"乙"}],"standard_answer":"A","explanation":"选择甲。","knowledge_points":[]},
+        {"external_id":"b","stem":"同一道题？","question_type":"single_choice","options":[{"label":"A","text":"丙"},{"label":"B","text":"丁"}],"standard_answer":"B","explanation":"选择丁。","knowledge_points":[]},
+    ]
+    path = tmp_path / "variants.json"; path.write_text(__import__("json").dumps(rows, ensure_ascii=False))
+    with SessionLocal() as db:
+        version = import_bank(db, path, name="变体题库", supplier="test", version_label="variants-v1")
+        assert version.status == "READY" and version.item_count == 2
+        version = build_index(db, version.id, ModelGateway())
+        run = run_evaluation(db, version.id, gateway=ModelGateway())
+        assert run.status == "PASSED" and run.answer_accuracy == 1
+        assert retrieve(db, "同一道题？", "pilot-school", "全国", "C1", knowledge_version_id=version.id) is None

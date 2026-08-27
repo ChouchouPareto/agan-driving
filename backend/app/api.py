@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models import Answer, Conversation, Feedback, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
+from app.models import Answer, Conversation, Feedback, KnowledgeSource, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
 from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
@@ -81,6 +81,16 @@ def me(student: Student = Depends(current_student)):
     return {"id": student.id, "anonymous_id": student.anonymous_id, "subject": student.subject, "license_type": student.license_type, "region": student.region}
 
 
+@router.get("/knowledge/status")
+def student_knowledge_status(student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    version = db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == student.school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == student.region, KnowledgeVersion.license_type == student.license_type).order_by(KnowledgeVersion.activated_at.desc()))
+    if not version:
+        return {"connected": False, "version": None, "item_count": 0, "scope": f"{student.region} · {student.license_type}", "is_preview": True, "notice": "当前没有已激活的知识库。"}
+    source = db.get(KnowledgeSource, version.source_id)
+    is_preview = not source or source.license_scope != "commercial"
+    return {"connected": True, "version": version.version_label, "item_count": version.item_count, "scope": f"{version.region} · {version.license_type}", "is_preview": is_preview, "notice": "当前为研究联调题库，正式上线前将替换为供应商授权版本。" if is_preview else "当前使用已授权正式题库。"}
+
+
 def _practice_summary(db: Session, student: Student, version: KnowledgeVersion) -> dict:
     rows = db.scalars(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.knowledge_version_id == version.id)).all()
     attempted = sum(1 for row in rows if row.attempts); correct = sum(row.correct_attempts for row in rows); attempts = sum(row.attempts for row in rows)
@@ -96,7 +106,7 @@ def practice_questions(mode: str = Query(default="all", pattern="^(all|wrong|fav
     items = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID").order_by(StandardQuestion.external_id)).all()
     if mode == "wrong": items = [item for item in items if progress.get(item.id) and progress[item.id].last_correct is False]
     if mode == "favorites": items = [item for item in items if progress.get(item.id) and progress[item.id].is_favorite]
-    return {"knowledge_version": version.version_label, "summary": _practice_summary(db, student, version), "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "attempted": bool(progress.get(item.id) and progress[item.id].attempts), "last_correct": progress[item.id].last_correct if progress.get(item.id) else None, "is_favorite": progress[item.id].is_favorite if progress.get(item.id) else False} for item in items[:200]]}
+    return {"knowledge_version": version.version_label, "summary": _practice_summary(db, student, version), "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "attempted": bool(progress.get(item.id) and progress[item.id].attempts), "last_correct": progress[item.id].last_correct if progress.get(item.id) else None, "is_favorite": progress[item.id].is_favorite if progress.get(item.id) else False} for item in items]}
 
 
 @router.post("/practice/questions/{question_id}/answer")
@@ -312,7 +322,7 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
     canned = {
         "GREETING": "嗨，我在呢。今天想刷几道题，还是有哪道题没弄明白？",
         "CHITCHAT": "我就是你的学车伙伴“超级陪驾”。可以陪你聊学车、讲题、复习错题，也能在你紧张的时候一起把问题慢慢拆开。",
-        "EMOTIONAL_SUPPORT": "听起来你现在有点不好受。我在这儿陪你。愿意说说是练车、考试还是别的事情让你不开心吗？如果暂时不想说，我们也可以先做一道简单题找找状态。",
+        "EMOTIONAL_SUPPORT": "听起来你现在有些不好受。我在这儿陪你。愿意说说是练车、考试，还是别的事情影响了状态吗？如果暂时不想说，我们也可以先做一道简单题，慢慢找回节奏。",
         "THANKS": "不用客气，我们是学车搭子。你想继续问、刷几道题，或者先歇一会儿都可以。",
         "SENSITIVE_CONTENT": "先保护好你的隐私：不要发送身份证、手机号、银行卡、验证码或缴费单。只保留题干和选项就够了，这些内容也不会进入问答模型。",
         "PROMPT_INJECTION": "这段内容像是在要求我改变规则或泄露内部信息，我不会执行。我们可以继续聊学车、讲题，或者直接开始刷题。",

@@ -4,6 +4,7 @@ import math
 import re
 import time
 import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import chromadb
@@ -62,21 +63,23 @@ def import_bank(db: Session, path: Path, *, name: str, supplier: str, version_la
     except (json.JSONDecodeError, ValueError) as exc:
         db.add(KnowledgeValidationIssue(knowledge_version_id=version.id, issue_type="ENCODING_ERROR", severity="P0", safe_message=str(exc)))
         version.status, version.error_count = "BLOCKED", 1; db.commit(); return version
-    seen_external, answers_by_fingerprint = set(), {}
+    seen_external, answers_by_question = set(), {}
     for index, row in enumerate(rows, 1):
         issues = _validate(row, index)
         external_id = str(row.get("external_id", ""))
         if external_id in seen_external: issues.append(("DUPLICATE", "P0", f"题号重复：{external_id}"))
         seen_external.add(external_id)
         stem_fp = fingerprint(str(row.get("stem", "")))
-        previous_answer = answers_by_fingerprint.get(stem_fp)
+        option_fp = fingerprint(options_text(row.get("options") or []))
+        question_key = (stem_fp, option_fp)
+        previous_answer = answers_by_question.get(question_key)
         if previous_answer and previous_answer != row.get("standard_answer"): issues.append(("ANSWER_CONFLICT", "P0", f"相同题干存在不同答案：{external_id}"))
-        answers_by_fingerprint[stem_fp] = row.get("standard_answer")
+        answers_by_question[question_key] = row.get("standard_answer")
         for kind, severity, message in issues:
             db.add(KnowledgeValidationIssue(knowledge_version_id=version.id, external_id=external_id or None, row_number=index, issue_type=kind, severity=severity, safe_message=message))
         if issues: continue
         options = row["options"]
-        question = StandardQuestion(knowledge_version_id=version.id, school_id=school_id, external_id=external_id, stem=row["stem"].strip(), normalized_stem=normalize(row["stem"]), stem_fingerprint=stem_fp, options=options, options_fingerprint=fingerprint(options_text(options)), standard_answer=str(row["standard_answer"]), explanation=row["explanation"].strip(), knowledge_points=row.get("knowledge_points", []), question_type=row["question_type"], region=row.get("region", region), license_type=row.get("license_type", license_type))
+        question = StandardQuestion(knowledge_version_id=version.id, school_id=school_id, external_id=external_id, stem=row["stem"].strip(), normalized_stem=normalize(row["stem"]), stem_fingerprint=stem_fp, options=options, options_fingerprint=option_fp, standard_answer=str(row["standard_answer"]), explanation=row["explanation"].strip(), knowledge_points=row.get("knowledge_points", []), question_type=row["question_type"], region=row.get("region", region), license_type=row.get("license_type", license_type))
         db.add(question); db.flush()
         chunk_content = f"题干：{question.stem}\n选项：\n{options_text(options)}\n标准答案：{question.standard_answer}\n解析：{question.explanation}\n知识点：{'、'.join(question.knowledge_points)}"
         db.add(KnowledgeChunk(question_id=question.id, knowledge_version_id=version.id, content=chunk_content, content_hash=hashlib.sha256(chunk_content.encode()).hexdigest()))
@@ -93,8 +96,24 @@ class ModelGateway:
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not self.settings.dashscope_api_key:
             return [self._fake_embedding(text) for text in texts]
-        response = httpx.post(f"{self.settings.dashscope_base_url.rstrip('/')}/embeddings", headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"}, json={"model": self.settings.embedding_model_id, "input": texts, "dimensions": self.settings.embedding_dimensions}, timeout=self.settings.rag_model_timeout_seconds)
-        response.raise_for_status(); return [item["embedding"] for item in response.json()["data"]]
+        embeddings: list[list[float]] = []
+        for offset in range(0, len(texts), 10):
+            batch = texts[offset:offset + 10]
+            last_error: Exception | None = None
+            for attempt in range(self.settings.rag_max_retries + 1):
+                try:
+                    response = httpx.post(f"{self.settings.dashscope_base_url.rstrip('/')}/embeddings", headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"}, json={"model": self.settings.embedding_model_id, "input": batch, "dimensions": self.settings.embedding_dimensions}, timeout=self.settings.rag_model_timeout_seconds)
+                    response.raise_for_status()
+                    embeddings.extend(item["embedding"] for item in sorted(response.json()["data"], key=lambda item: item.get("index", 0)))
+                    last_error = None
+                    break
+                except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+                    last_error = exc
+                    if attempt < self.settings.rag_max_retries:
+                        time.sleep(.4 * (attempt + 1))
+            if last_error is not None:
+                raise last_error
+        return embeddings
 
     def rerank(self, query: str, documents: list[str]) -> list[int]:
         if not self.settings.dashscope_api_key: return list(range(len(documents)))
@@ -150,11 +169,17 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     version = db.get(KnowledgeVersion, knowledge_version_id) if knowledge_version_id else db.scalar(select(KnowledgeVersion).where(KnowledgeVersion.school_id == school_id, KnowledgeVersion.status == "ACTIVE", KnowledgeVersion.region == region, KnowledgeVersion.license_type == license_type).order_by(KnowledgeVersion.activated_at.desc()))
     if version and (version.school_id != school_id or version.region != region or version.license_type != license_type): version = None
     if not version: return None
-    normalized = normalize(text); exact = db.scalar(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID", StandardQuestion.stem_fingerprint == fingerprint(text)))
+    normalized = normalize(text)
+    all_questions = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID")).all()
+    exact_full = next((item for item in all_questions if normalize(f"{item.stem}\n{options_text(item.options)}") == normalized), None)
+    same_stem = [item for item in all_questions if item.stem_fingerprint == fingerprint(text)]
+    exact = exact_full or (same_stem[0] if len(same_stem) == 1 else None)
     candidates = [exact] if exact else []
     match_type = "standard_exact" if exact else "standard_hybrid"
+    if len(same_stem) > 1 and not exact_full:
+        db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type="ambiguous", candidate_ids=[item.id for item in same_stem], final_evidence_ids=[], error_code="AMBIGUOUS_QUESTION", latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
+        return None
     if not exact:
-        all_questions = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID")).all()
         keyword = sorted(all_questions, key=lambda item: sum(1 for ch in set(normalized) if ch in item.normalized_stem), reverse=True)[:get_settings().rag_keyword_top_k]
         candidates.extend(keyword)
         if version.collection_name:
@@ -167,6 +192,10 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
             order = gateway.rerank(text, [item.stem + "\n" + item.explanation for item in candidates[:30]])
             candidates = [candidates[index] for index in order if index < len(candidates)][:get_settings().rag_rerank_top_k]
     selected = candidates[0] if candidates else None
+    if selected and not exact:
+        similarity = SequenceMatcher(None, normalized, selected.normalized_stem).ratio()
+        if similarity < .24:
+            selected = None
     error_code = None if selected else "NO_TRUSTED_EVIDENCE"
     db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type=match_type if selected else "none", candidate_ids=[item.id for item in candidates], final_evidence_ids=[selected.id] if selected else [], error_code=error_code, latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
     if not selected: return None
@@ -181,7 +210,7 @@ def create_evaluation_dataset(db: Session, version_id: str) -> EvaluationDataset
     dataset = EvaluationDataset(school_id=version.school_id, name=f"{version.version_label} 全量标准题评测", version_label=version.version_label)
     db.add(dataset); db.flush()
     for question in db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID")).all():
-        db.add(EvaluationCase(dataset_id=dataset.id, input_text=question.stem, expected_external_id=question.external_id, expected_answer=question.standard_answer, region=question.region, license_type=question.license_type, severity="P0"))
+        db.add(EvaluationCase(dataset_id=dataset.id, input_text=f"{question.stem}\n{options_text(question.options)}", expected_external_id=question.external_id, expected_answer=question.standard_answer, region=question.region, license_type=question.license_type, severity="P0"))
     db.commit(); return dataset
 
 

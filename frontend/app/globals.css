@@ -251,6 +251,10 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
 .welcomeEyebrow { display: inline-flex; margin-bottom: 18px; color: var(--primary); font-size: 13px; font-weight: 750; letter-spacing: .04em; }
 .welcomePanel h1 { margin: 0; font-size: clamp(32px, 5.5vw, 48px); line-height: 1.16; letter-spacing: -.045em; }
 .welcomePanel > p { max-width: 640px; margin: 16px 0 0; color: #35353b; font-size: clamp(18px, 2.8vw, 22px); line-height: 1.7; }
+.knowledgeConnection { width: fit-content; min-height: 36px; margin-top: 18px; padding: 7px 11px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.72); color: var(--secondary); font-size: 12px; }
+.knowledgeConnection.connected svg { color: var(--success); }
+.knowledgeConnection svg { width: 16px; height: 16px; }
+.knowledgeConnection b { padding: 3px 6px; border-radius: 6px; background: #fff3d6; color: #8a5900; font-size: 10px; }
 .promptSuggestions { max-width: 610px; margin-top: 34px; display: grid; justify-items: start; gap: 12px; }
 .promptSuggestions button { width: auto; max-width: 100%; min-height: 56px; padding: 13px 18px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border: 0; border-radius: 20px; background: var(--soft-surface); color: var(--text); font-size: 16px; text-align: left; transition: background 180ms ease, transform 180ms ease; }
 .promptSuggestions button:nth-child(2) { min-width: min(520px, 100%); }
