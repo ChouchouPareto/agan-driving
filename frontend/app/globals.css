@@ -57,6 +57,7 @@ textarea.input { min-height: 112px; resize: vertical; line-height: 1.6; }
 .composerActions { display: flex; align-items: center; gap: 16px; margin-left: auto; }
 .characterCount { color: var(--secondary); font-size: 13px; white-space: nowrap; }
 .error { color: var(--danger); margin-top: 10px; font-size: 14px; }
+.sessionNotice { margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; color: #8a5500; background: #fff6df; font-size: 14px; line-height: 1.55; }
 .privacy { color: var(--secondary); font-size: 13px; line-height: 1.6; margin-top: 14px; }
 .status { color: var(--primary); font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1.2s infinite; }

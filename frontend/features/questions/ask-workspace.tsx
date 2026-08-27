@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BookOpenCheck, ChevronDown, Heart, ListRestart, LoaderCircle, Send, Sparkles } from "lucide-react";
 import { answerSchema, type QuestionDetail } from "@/lib/schemas/domain";
 import { consumeSse } from "@/lib/stream/sse";
+import { ApiError } from "@/lib/api/errors";
 import * as api from "./api";
 import { AnswerCard } from "./answer-card";
 import { OCRWorkspace } from "@/features/ocr/ocr-workspace";
@@ -29,6 +30,18 @@ export function AskWorkspace() {
   const streamEnd = useRef<HTMLDivElement | null>(null);
   const isBusy = status.startsWith("正在");
 
+  function isExpiredSession(reason: unknown) {
+    return reason instanceof ApiError && (reason.status === 401 || reason.code === "INVALID_SESSION" || reason.code === "UNAUTHORIZED");
+  }
+
+  async function returnToInvitation(draft = "") {
+    if (draft) sessionStorage.setItem("super-driving-draft", draft);
+    sessionStorage.setItem("super-driving-session-expired", "1");
+    sessionStorage.removeItem("super-driving-conversation");
+    await fetch("/api/session", { method: "DELETE" }).catch(() => undefined);
+    router.replace("/enter");
+  }
+
   function rememberConversation(id: string) {
     setConversationId(id);
     sessionStorage.setItem("super-driving-conversation", id);
@@ -51,9 +64,10 @@ export function AskWorkspace() {
         }
         const id = savedConversationId || sessionStorage.getItem("super-driving-conversation") || "";
         if (id) await loadConversation(id);
-      } catch {
+      } catch (reason) {
         sessionStorage.removeItem("super-driving-conversation");
         setConversationId("");
+        if (isExpiredSession(reason)) await returnToInvitation();
       }
     };
     void restore();
@@ -61,6 +75,15 @@ export function AskWorkspace() {
   }, [savedQuestionId, savedConversationId]);
 
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    const draft = sessionStorage.getItem("super-driving-draft");
+    if (draft && !text) window.setTimeout(() => {
+      setText(draft);
+      sessionStorage.removeItem("super-driving-draft");
+    }, 0);
+    // Restore a message only once after authentication.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { streamEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, localExchanges, status]);
 
   async function streamAnswer(questionId: string) {
@@ -102,6 +125,7 @@ export function AskWorkspace() {
       setMessages(items => [...items.filter(item => item.id !== question.id), question]);
       await streamAnswer(question.id);
     } catch (reason) {
+      if (isExpiredSession(reason)) { await returnToInvitation(command); return; }
       if ((reason as Error).name !== "AbortError") setError(reason instanceof Error ? reason.message : "提问失败");
       setStatus("");
     }
@@ -119,7 +143,7 @@ export function AskWorkspace() {
         const answer = await api.explainAgain(question.answer.id);
         setMessages(items => items.map(item => item.id === question.id ? { ...item, answer } : item));
       } else await createReviewTicket(question);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "操作失败"); }
+    } catch (reason) { if (isExpiredSession(reason)) await returnToInvitation(); else setError(reason instanceof Error ? reason.message : "操作失败"); }
     finally { setStatus(""); }
   }
 
