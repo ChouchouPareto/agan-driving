@@ -57,6 +57,22 @@ summary { cursor: pointer; font-weight: 600; }
 .ticket { background: var(--primary-soft); border-color: #dcd9ff; }
 .ticketTitle { font-weight: 700; color: #453fd4; }
 .ticket p { color: var(--secondary); line-height: 1.6; margin-bottom: 0; }
+.ocrCard h2 { margin: 5px 0 0; font-size: 20px; }
+.ocrHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ocrHint { color: var(--secondary); font-size: 14px; line-height: 1.65; }
+.uploadButton { min-height: 48px; border: 1px dashed #b9b6ef; border-radius: 10px; background: var(--primary-soft); color: #453fd4; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 650; cursor: pointer; }
+.uploadButton input, .secondaryButton input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+.ocrStatus { display: flex; align-items: center; gap: 8px; color: var(--primary); margin: 14px 0; font-size: 14px; }
+.ocrPreview { width: 100%; max-height: 320px; object-fit: contain; background: #f3f3f5; border: 1px solid var(--border); border-radius: 10px; margin: 12px 0; }
+.ocrFields { display: grid; gap: 12px; margin-top: 14px; }
+.ocrField { display: grid; gap: 7px; font-size: 14px; font-weight: 600; }
+.ocrField span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ocrField em { color: var(--warning); font-style: normal; font-size: 12px; }
+.ocrField textarea { min-height: 72px; resize: vertical; border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; line-height: 1.55; }
+.ocrField.uncertain textarea { border-color: #d69b43; background: #fffbf4; }
+.statusText { color: var(--primary); font-size: 14px; }
+.sectionDivider { display: flex; align-items: center; gap: 12px; color: var(--secondary); font-size: 13px; margin: 6px 0 16px; }
+.sectionDivider::before, .sectionDivider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
 @keyframes pulse { 50% { opacity: .35; } }
 .spin { animation: spin .85s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -136,3 +136,72 @@ class AITrace(Base):
     error_type: Mapped[str | None] = mapped_column(String, nullable=True)
     is_mock: Mapped[bool] = mapped_column(Boolean, default=True)
 
+
+class UploadedAsset(Base):
+    __tablename__ = "uploaded_assets"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    school_id: Mapped[str] = mapped_column(String, index=True)
+    storage_key: Mapped[str] = mapped_column(String, unique=True)
+    original_name: Mapped[str] = mapped_column(String)
+    safe_name: Mapped[str] = mapped_column(String)
+    declared_mime: Mapped[str] = mapped_column(String)
+    detected_mime: Mapped[str] = mapped_column(String)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="READY")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class OCRTask(Base):
+    __tablename__ = "ocr_tasks"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("uploaded_assets.id"), index=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    request_id: Mapped[str] = mapped_column(String, unique=True, default=uid)
+    idempotency_key: Mapped[str] = mapped_column(String, unique=True)
+    status: Mapped[str] = mapped_column(String, default="QUEUED", index=True)
+    provider: Mapped[str] = mapped_column(String, default="dashscope")
+    model_id: Mapped[str] = mapped_column(String, default="qwen-vl-ocr")
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    question_type: Mapped[str] = mapped_column(String, default="unknown")
+    warnings: Mapped[list[str]] = mapped_column(JSON, default=list)
+    error_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    error_message_safe: Mapped[str | None] = mapped_column(String, nullable=True)
+    linked_question_id: Mapped[str | None] = mapped_column(ForeignKey("questions.id"), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class OCRField(Base):
+    __tablename__ = "ocr_fields"
+    __table_args__ = (UniqueConstraint("task_id", "field_type", "sequence"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    task_id: Mapped[str] = mapped_column(ForeignKey("ocr_tasks.id"), index=True)
+    field_type: Mapped[str] = mapped_column(String)
+    label: Mapped[str | None] = mapped_column(String, nullable=True)
+    sequence: Mapped[int] = mapped_column(Integer, default=0)
+    original_value: Mapped[str] = mapped_column(Text)
+    confidence: Mapped[float] = mapped_column(Float, default=0)
+    needs_confirmation: Mapped[bool] = mapped_column(Boolean, default=True)
+    corrected_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class OCRAuditLog(Base):
+    __tablename__ = "ocr_audit_logs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    task_id: Mapped[str] = mapped_column(ForeignKey("ocr_tasks.id"), index=True)
+    field_id: Mapped[str | None] = mapped_column(ForeignKey("ocr_fields.id"), nullable=True)
+    actor_id: Mapped[str] = mapped_column(String)
+    action: Mapped[str] = mapped_column(String)
+    before_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    after_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    request_id: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

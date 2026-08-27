@@ -6,11 +6,20 @@ const upstream = process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
+  const route = path.join("/");
+  if (route === "assets/images") {
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (contentLength > 11 * 1024 * 1024) {
+      return NextResponse.json({ error: { code: "IMAGE_TOO_LARGE", message: "图片不能超过 10MB。" } }, { status: 413 });
+    }
+  }
   const url = `${upstream}/${path.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
   const token = (await cookies()).get(COOKIE)?.value;
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) headers.set("idempotency-key", idempotencyKey);
   if (token) headers.set("authorization", `Bearer ${token}`);
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   headers.set("x-request-id", requestId);
@@ -23,7 +32,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   const responseHeaders = new Headers();
   responseHeaders.set("content-type", response.headers.get("content-type") ?? "application/json");
   responseHeaders.set("x-request-id", requestId);
-  if (path.join("/") === "auth/invitations/verify" && response.ok) {
+  if (route === "auth/invitations/verify" && response.ok) {
     const payload = await response.json();
     const next = NextResponse.json({ student_id: payload.student_id, anonymous_id: payload.anonymous_id }, { status: response.status, headers: responseHeaders });
     if (payload.access_token) {

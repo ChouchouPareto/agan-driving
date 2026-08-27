@@ -55,3 +55,20 @@ class TicketCreate(BaseModel):
     question_id: str
     risk_codes: list[str] = []
 
+
+class OCRTaskCreate(BaseModel):
+    asset_id: str
+
+
+class OCRFieldPatch(BaseModel):
+    field_id: str
+    value: str = Field(min_length=1, max_length=4000)
+
+
+class OCRFieldsPatch(BaseModel):
+    version: int = Field(ge=1)
+    fields: list[OCRFieldPatch] = Field(min_length=1, max_length=10)
+
+
+class OCRConfirm(BaseModel):
+    conversation_id: str | None = None

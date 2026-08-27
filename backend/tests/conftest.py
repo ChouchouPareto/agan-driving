@@ -1,5 +1,8 @@
 import os
+import tempfile
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["DASHSCOPE_API_KEY"] = ""
+os.environ["OCR_STORAGE_DIR"] = tempfile.mkdtemp(prefix="driving-school-ocr-tests-")
 
 import pytest
 from fastapi.testclient import TestClient

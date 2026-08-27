@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 data/*.db
+data/private-assets/
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local

@@ -24,3 +24,15 @@ test("关键断点和减少动画模式下布局稳定", async ({ page }) => {
     await expect(page.getByRole("button", { name: "进入服务" })).toBeVisible();
   }
 });
+
+test("图片题目可识别、确认并进入可信问答", async ({ page }) => {
+  await page.goto("/enter");
+  await page.getByRole("button", { name: "进入服务" }).click();
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "question.png", mimeType: "image/png", buffer: png });
+  await expect(page.getByText("请确认识别内容")).toBeVisible();
+  await page.getByRole("button", { name: "确认并提问" }).click();
+  await expect(page).toHaveURL(/questionId=/);
+  await page.getByRole("button", { name: "提交问题" }).click();
+  await expect(page.getByText("减速慢行，并让右方道路来车先行。")).toBeVisible();
+});
