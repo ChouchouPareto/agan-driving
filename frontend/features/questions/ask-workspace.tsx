@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BookOpenCheck, ChevronDown, Heart, ListRestart, LoaderCircle, Send, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Camera, Heart, History, ImageUp, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
 import { answerSchema, type QuestionDetail } from "@/lib/schemas/domain";
 import { consumeSse } from "@/lib/stream/sse";
 import { ApiError } from "@/lib/api/errors";
@@ -19,6 +19,7 @@ export function AskWorkspace() {
   const savedQuestionId = params.get("questionId") ?? "";
   const savedConversationId = params.get("conversationId") ?? "";
   const savedOCRTaskId = params.get("ocrTaskId") ?? "";
+  const isNewConversation = params.get("new") === "1";
   const [conversationId, setConversationId] = useState(savedConversationId);
   const [messages, setMessages] = useState<QuestionDetail[]>([]);
   const [localExchanges, setLocalExchanges] = useState<LocalExchange[]>([]);
@@ -57,6 +58,13 @@ export function AskWorkspace() {
   useEffect(() => {
     const restore = async () => {
       try {
+        if (isNewConversation) {
+          sessionStorage.removeItem("super-driving-conversation");
+          setConversationId("");
+          setMessages([]);
+          setLocalExchanges([]);
+          return;
+        }
         if (savedQuestionId) {
           const question = await api.getQuestion(savedQuestionId);
           await loadConversation(question.conversation_id);
@@ -72,7 +80,7 @@ export function AskWorkspace() {
     };
     void restore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedQuestionId, savedConversationId]);
+  }, [savedQuestionId, savedConversationId, isNewConversation]);
 
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
@@ -157,6 +165,11 @@ export function AskWorkspace() {
     router.replace(`/ask?ocrTaskId=${encodeURIComponent(taskId)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ""}`, { scroll: false });
   }
 
+  function openImagePicker() {
+    setToolsOpen(false);
+    window.setTimeout(() => document.querySelector<HTMLInputElement>(".ocrPanel input[type='file']")?.click(), 0);
+  }
+
   async function useOCRQuestion(questionId: string) {
     try {
       const question = await api.getQuestion(questionId);
@@ -166,9 +179,11 @@ export function AskWorkspace() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "图片提问失败"); setStatus(""); }
   }
 
-  return <div className="chatPage">
+  const hasConversation = messages.length > 0 || localExchanges.length > 0 || Boolean(status || error);
+
+  return <div className={`chatPage ${hasConversation ? "hasConversation" : "isWelcome"}`}>
     <section className="chatStream" aria-label="与超级陪驾的对话" aria-busy={isBusy}>
-      <div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={18}/></span><div><span className="messageAuthor">超级陪驾 · AI</span><p>嗨，我可以帮你讲题、识别题目图片，也可以直接带你开始刷题。</p><div className="promptSuggestions"><button onClick={() => setText("我要刷题")}>我要刷题</button><button onClick={() => setText("直行车道可以右转吗？")}>问一道题</button></div></div></div>
+      {!hasConversation && <div className="welcomePanel"><span className="welcomeEyebrow">C1 科目一 · AI 学习伙伴</span><h1>Hi，我是超级陪驾</h1><p>比起只告诉你答案，我更想陪你真正看懂。今天想先学什么？</p><div className="promptSuggestions"><button onClick={() => setText("我要刷题")}><span>给我出 5 道科目一题</span><ArrowRight aria-hidden="true"/></button><button onClick={() => setText("这道题为什么选这个答案？")}><span>这道题为什么选这个答案？</span><ArrowRight aria-hidden="true"/></button><button onClick={() => setText("复习一下我的错题")}><span>复习一下我的错题</span><ArrowRight aria-hidden="true"/></button></div></div>}
       {messages.map(question => <div className="conversationTurn" key={question.id}>
         <div className="userMessage"><p>{question.text}</p></div>
         {question.intent === "FOLLOW_UP" && <span className="intentBadge">已结合上一题理解</span>}
@@ -180,9 +195,10 @@ export function AskWorkspace() {
       <div ref={streamEnd}/>
     </section>
     <section id="ask-composer" className="chatComposer">
-      <div className={`toolTray ${toolsOpen ? "open" : ""}`}><button className="toolTrayToggle" type="button" aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}><BookOpenCheck aria-hidden="true" size={18}/><span>学习工具</span><ChevronDown aria-hidden="true" size={17}/></button>{toolsOpen && <nav className="toolTrayLinks" aria-label="学习工具"><Link href="/practice"><BookOpenCheck aria-hidden="true" size={18}/>顺序刷题</Link><Link href="/practice?mode=wrong"><ListRestart aria-hidden="true" size={18}/>错题本</Link><Link href="/practice?mode=favorites"><Heart aria-hidden="true" size={18}/>收藏题</Link></nav>}</div>
-      <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级陪驾发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息、粘贴题目，或说‘我要刷题’" maxLength={2000}/><div className="chatInputActions"><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/2000</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={19}/> : <Send aria-hidden="true" size={19}/>}</button></div></form>
-      <p className="aiDisclaimer">超级陪驾会先识别意图，科目一结论以当前题库依据为准。</p>
+      <nav className="quickTools" aria-label="快捷学习入口"><Link href="/practice"><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><Link href="/practice?mode=wrong"><History aria-hidden="true"/>错题本</Link><Link href="/practice?mode=favorites"><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={() => setToolsOpen(true)}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
+      <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级陪驾发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={2000}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/2000</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
+      {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href="/practice"><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><Link href="/practice?mode=wrong"><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href="/practice?mode=favorites"><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button><button type="button" onClick={() => { setText("不懂就问校长"); setToolsOpen(false); }}><span><Sparkles aria-hidden="true"/></span><strong>问校长</strong><small>特殊问题人工处理</small></button></div>}
+      <p className="aiDisclaimer">内容由 AI 生成，科目一结论以当前题库依据为准</p>
     </section>
   </div>;
 }
