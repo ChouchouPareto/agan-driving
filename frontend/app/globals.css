@@ -128,9 +128,10 @@ summary { cursor: pointer; font-weight: 600; }
 .sectionDivider { display: flex; align-items: center; gap: 12px; color: var(--secondary); font-size: 13px; margin: 6px 0 16px; }
 .sectionDivider::before, .sectionDivider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-.chatPage { min-height: calc(100vh - 200px); display: flex; flex-direction: column; }
-.chatStream { flex: 1; display: grid; align-content: start; gap: 18px; padding-bottom: 28px; }
-.conversationTurn { display: grid; gap: 12px; }
+.chatPage { min-width: 0; min-height: calc(100vh - 200px); display: flex; flex-direction: column; }
+.chatStream { min-width: 0; flex: 1; display: grid; align-content: start; gap: 18px; padding-bottom: 28px; }
+.conversationTurn { min-width: 0; max-width: 100%; display: grid; gap: 12px; }
+.conversationTurn > * { min-width: 0; }
 .assistantMessage { display: flex; align-items: flex-start; gap: 10px; max-width: 88%; }
 .assistantMessage.compact { align-items: center; }
 .assistantAvatar { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: white; background: var(--primary); }
@@ -139,9 +140,11 @@ summary { cursor: pointer; font-weight: 600; }
 .promptSuggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .promptSuggestions button { min-height: 40px; padding: 8px 12px; border: 1px solid #d9d6ff; border-radius: 999px; background: var(--primary-soft); color: #4943d5; }
 .userMessage { justify-self: end; max-width: 80%; padding: 11px 15px; border-radius: 16px 16px 4px 16px; background: var(--primary); color: white; }
-.userMessage p { margin: 0; line-height: 1.6; white-space: pre-wrap; }
+.userMessage p { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .intentBadge { justify-self: end; margin-top: -6px; color: var(--secondary); font-size: 11px; }
-.chatStream .answer { width: calc(100% - 44px); margin: 0 0 0 44px; border-left: 0; border-radius: 4px 14px 14px 14px; }
+.chatStream .answer { min-width: 0; max-width: calc(100% - 44px); width: calc(100% - 44px); margin: 0 0 0 44px; border-left: 0; border-radius: 4px 14px 14px 14px; overflow-wrap: anywhere; }
+.chatStream .answer .actions { min-width: 0; }
+.chatStream .answer .actions .button { min-width: 0; flex: 1 1 148px; white-space: normal; }
 .chatStream .ticket { margin-left: 44px; }
 .chatError { margin-left: 44px; padding: 12px 14px; border-radius: 10px; color: var(--danger); background: #fff2f3; }
 .chatComposer { position: sticky; bottom: 0; z-index: 8; padding: 8px 0 12px; background: linear-gradient(180deg, rgba(247,247,248,0), var(--background) 18%); }
@@ -190,5 +193,5 @@ summary { cursor: pointer; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 600px) { .topbar { height: 56px; padding: 0 16px; } .topbar .mode { display: none; } .main { width: min(100% - 24px, 720px); padding-top: 24px; } .hero h1 { font-size: 24px; } .card { padding: 16px; } .reason, .detailText { font-size: 16px; } .invite { margin-top: 24px; } .invite h1 { margin-top: 32px; } .composerMeta { align-items: flex-end; } .composerMeta .button { flex: 1; } }
-@media (max-width: 600px) { .learningEntrances { grid-template-columns: 1fr; } .learningEntrance { min-height: 82px; } .composerFooter { flex-direction: column; } .composerActions { width: 100%; justify-content: space-between; } .composerActions .button { flex: 1; } .ocrPanel { max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { justify-content: space-between; } .uploadMeta { display: none; } .practiceSummary { grid-template-columns: repeat(2, 1fr); } .chatPage { min-height: calc(100vh - 136px); } .chatStream { padding-bottom: 18px; } .assistantMessage { max-width: 94%; } .userMessage { max-width: 88%; } .chatStream .answer { width: calc(100% - 28px); margin-left: 28px; padding: 16px; } .chatStream .ticket, .chatError { margin-left: 28px; } .toolTrayLinks a { min-width: 92px; } .chatComposer { padding-bottom: max(10px, env(safe-area-inset-bottom)); } .chatInputActions .ocrPanel { width: auto; } .chatInputActions .uploadButton { padding-left: 6px; padding-right: 6px; } }
+@media (max-width: 600px) { .learningEntrances { grid-template-columns: 1fr; } .learningEntrance { min-height: 82px; } .composerFooter { flex-direction: column; } .composerActions { width: 100%; justify-content: space-between; } .composerActions .button { flex: 1; } .ocrPanel { max-width: none; width: 100%; } .ocrPanel.active { margin-top: 16px; } .ocrUploadRow { justify-content: space-between; } .uploadMeta { display: none; } .practiceSummary { grid-template-columns: repeat(2, 1fr); } .chatPage { min-height: calc(100vh - 136px); } .chatStream { padding-bottom: 18px; } .assistantMessage { max-width: 94%; } .userMessage { max-width: 88%; } .chatStream .answer { max-width: calc(100% - 20px); width: calc(100% - 20px); margin-left: 20px; padding: 16px; } .chatStream .answer .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .chatStream .answer .actions .button { width: 100%; min-height: 48px; padding-inline: 10px; } .chatStream .answer .actions .dangerButton:last-child { grid-column: 1 / -1; } .chatStream .ticket, .chatError { max-width: calc(100% - 20px); margin-left: 20px; } .toolTrayLinks a { min-width: 92px; } .chatComposer { padding-bottom: max(10px, env(safe-area-inset-bottom)); } .chatInputActions .ocrPanel { width: auto; } .chatInputActions .uploadButton { padding-left: 6px; padding-right: 6px; } }
 @media (max-width: 800px) { .staffMain { width: min(100% - 24px, 720px); padding-top: 24px; } .ticketGrid, .detailGrid { grid-template-columns: 1fr; } .detailGrid aside { position: static; } .detailHeader { align-items: flex-start; flex-direction: column; } .detailHeader .button { width: 100%; } .queueTime { float: none; display: block; margin-top: 8px; } }

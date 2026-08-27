@@ -101,7 +101,6 @@ class AIService:
 
     def _call_dashscope_teaching(self, text: str, match: dict, explain_again: bool) -> TeachingExplanation:
         request = {
-            "model": self.settings.main_model_id,
             "messages": [
                 {"role": "system", "content": f"{SYSTEM_PROMPT}\n\n{TEACHING_EXPLANATION_PROMPT}"},
                 {"role": "user", "content": json.dumps({
@@ -113,27 +112,32 @@ class AIService:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.2,
+            "max_tokens": 600,
+            "enable_thinking": False,
         }
         last_error: Exception | None = None
-        for _ in range(self.settings.model_max_retries + 1):
-            try:
-                response = httpx.post(
-                    f"{self.settings.dashscope_base_url.rstrip('/')}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"},
-                    json=request, timeout=self.settings.model_timeout_seconds,
-                )
-                response.raise_for_status()
-                body = response.json()
-                content = str(body["choices"][0]["message"]["content"]).strip()
-                if content.startswith("```"):
-                    content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-                parsed = TeachingExplanation.model_validate_json(content)
-                self.model_id = self.settings.main_model_id
-                self.token_usage = int(body.get("usage", {}).get("total_tokens", 0))
-                self.is_mock = False
-                return parsed
-            except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
-                last_error = exc
+        model_candidates = [self.settings.main_model_id] if explain_again else list(dict.fromkeys([self.settings.light_model_id, self.settings.main_model_id]))
+        for model_id in model_candidates:
+            request["model"] = model_id
+            for _ in range(self.settings.model_max_retries + 1):
+                try:
+                    response = httpx.post(
+                        f"{self.settings.dashscope_base_url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"},
+                        json=request, timeout=self.settings.model_timeout_seconds,
+                    )
+                    response.raise_for_status()
+                    body = response.json()
+                    content = str(body["choices"][0]["message"]["content"]).strip()
+                    if content.startswith("```"):
+                        content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                    parsed = TeachingExplanation.model_validate_json(content)
+                    self.model_id = model_id
+                    self.token_usage = int(body.get("usage", {}).get("total_tokens", 0))
+                    self.is_mock = False
+                    return parsed
+                except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+                    last_error = exc
         raise AIServiceError("DashScope teaching explanation failed") from last_error
 
     def _call_dify(self, text: str, explain_again: bool) -> AnswerPayload:

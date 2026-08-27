@@ -99,6 +99,7 @@ def test_teaching_model_cannot_change_locked_standard_answer(monkeypatch):
     service = AIService()
     monkeypatch.setattr(service.settings, "dashscope_api_key", "test-key")
     monkeypatch.setattr(service.settings, "main_model_id", "test-model")
+    monkeypatch.setattr(service.settings, "light_model_id", "test-model")
     monkeypatch.setattr("app.services.httpx.post", lambda *args, **kwargs: Response())
     match = QUESTION_BANK["驾驶机动车通过没有交通信号的交叉路口怎样行驶"]
     answer = service.answer("测试题", match)
@@ -106,6 +107,31 @@ def test_teaching_model_cannot_change_locked_standard_answer(monkeypatch):
     assert answer.detail.startswith("把无信号路口")
     assert service.token_usage == 123
     assert service.is_mock is False
+
+
+def test_first_explanation_uses_light_model_and_follow_up_uses_main(monkeypatch):
+    requested = []
+    class Response:
+        def raise_for_status(self): return None
+        def json(self): return {"choices": [{"message": {"content": json.dumps({"short_reason": "这是简短而可验证的原因。", "detail": "这是一段与题库证据一致的教学解释内容。", "common_mistake": "容易忽略题干中的关键条件。"}, ensure_ascii=False)}}], "usage": {"total_tokens": 20}}
+    def post(*args, **kwargs):
+        requested.append(kwargs["json"]["model"])
+        return Response()
+    service = AIService()
+    monkeypatch.setattr(service.settings, "dashscope_api_key", "test-key")
+    monkeypatch.setattr(service.settings, "light_model_id", "light-model")
+    monkeypatch.setattr(service.settings, "main_model_id", "main-model")
+    monkeypatch.setattr("app.services.httpx.post", post)
+    match = QUESTION_BANK["驾驶机动车通过没有交通信号的交叉路口怎样行驶"]
+    service.answer("测试题", match, explain_again=False)
+    assert service.model_id == "light-model"
+    follow_up = AIService()
+    monkeypatch.setattr(follow_up.settings, "dashscope_api_key", "test-key")
+    monkeypatch.setattr(follow_up.settings, "light_model_id", "light-model")
+    monkeypatch.setattr(follow_up.settings, "main_model_id", "main-model")
+    follow_up.answer("为什么", match, explain_again=True)
+    assert follow_up.model_id == "main-model"
+    assert requested == ["light-model", "main-model"]
 
 
 def test_teaching_model_failure_falls_back_to_reviewed_explanation(monkeypatch):
