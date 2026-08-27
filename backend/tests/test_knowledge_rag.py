@@ -23,6 +23,9 @@ def test_import_index_activate_and_retrieve():
         activate(db, version.id)
         result = retrieve(db, "驾驶机动车通过没有交通信号的交叉路口怎样行驶？", "pilot-school", "全国", "C1")
         assert result and result["answer"].startswith("B.") and result["standard_answer"] == "B" and result["knowledge_version"] == "test-v1"
+        judgment = retrieve(db, "驾驶人在发生交通事故后因抢救伤员变动现场时要标明位置。", "pilot-school", "全国", "C1")
+        if judgment:
+            assert judgment["answer"] not in ("正确. 正确", "错误. 错误")
         assert retrieve(db, "道路上随便问一个完全不相关的问题", "pilot-school", "全国", "C1") is None
 
 

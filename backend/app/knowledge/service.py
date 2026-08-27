@@ -200,7 +200,9 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type=match_type if selected else "none", candidate_ids=[item.id for item in candidates], final_evidence_ids=[selected.id] if selected else [], error_code=error_code, latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
     if not selected: return None
     option = next((item for item in selected.options if str(item.get("label", "")).upper() == selected.standard_answer.upper()), None)
-    display_answer = f"{selected.standard_answer}. {option['text']}" if option else selected.standard_answer
+    answer_label = str(selected.standard_answer).strip()
+    option_text = str(option.get("text", "")).strip() if option else ""
+    display_answer = answer_label if not option_text or normalize(option_text) == normalize(answer_label) else f"{answer_label}. {option_text}"
     return {"answer": display_answer, "standard_answer": selected.standard_answer, "reason": selected.explanation[:160], "detail": selected.explanation, "mistake": "请注意题干中的否定词、范围和关键条件。", "source_id": selected.id, "external_id": selected.external_id, "title": "科目一标准题库", "excerpt": selected.explanation, "knowledge_version": version.version_label, "match_type": match_type, "region": selected.region, "license_type": selected.license_type}
 
 
