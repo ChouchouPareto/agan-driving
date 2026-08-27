@@ -10,7 +10,8 @@ from app.pe.prompts import INTENT_CLASSIFIER_PROMPT
 INTENTS = {
     "QUESTION_ANSWER", "FOLLOW_UP", "START_PRACTICE", "WRONG_QUESTIONS",
     "FAVORITES", "LEARNING_PROGRESS", "SCHOOL_SERVICE", "HUMAN_HELP",
-    "GREETING", "CHITCHAT", "EMOTIONAL_SUPPORT", "THANKS",
+    "GREETING", "CHITCHAT", "EMOTIONAL_SUPPORT", "THANKS", "PRODUCT_HELP",
+    "PRACTICAL_TRAINING",
     "OUT_OF_SCOPE", "SENSITIVE_CONTENT", "PROMPT_INJECTION",
 }
 
@@ -50,13 +51,17 @@ def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
         return IntentResult("GREETING", 0.99, "rule")
     if re.search(r"谢谢|感谢|辛苦了|明白了|知道了|懂了", value):
         return IntentResult("THANKS", 0.96, "rule")
+    if re.search(r"(?:你的|这个)?系统.{0,8}(?:设置|配置|工作)|你是怎么工作的|你用的什么模型|你的知识库|你会什么|怎么使用你", value):
+        return IntentResult("PRODUCT_HELP", 0.98, "rule")
+    if re.search(r"科目[二三四]|倒车入库|侧方停车|坡道起步|直角转弯|曲线行驶|百米加减挡|靠边停车|离合器|换挡|路考", value):
+        return IntentResult("PRACTICAL_TRAINING", 0.98, "rule")
     if re.search(r"不开心|难过|焦虑|紧张|害怕|压力大|好烦|烦死|崩溃|好累|不想学|考不过|没信心", value):
         return IntentResult("EMOTIONAL_SUPPORT", 0.98, "rule")
-    if re.search(r"你是谁|你能做什么|陪我聊|聊会儿|无聊|讲个笑话", value):
+    if re.search(r"你是谁|你能做什么|陪我聊|聊会儿|无聊|讲个笑话", value) or re.fullmatch(r"(?:嘿+|哈+|哈哈+|嘻嘻+|呵呵+|嗯+|哦+|好吧|行吧|在吗|干嘛呢)[~～!！。,.，\s]*", value):
         return IntentResult("CHITCHAT", 0.95, "rule")
     if has_context and re.search(r"^(?:为什么|为啥|怎么理解|没看懂|还是不懂|再讲(?:一次|一遍)?|换个说法|上一题|这题|那题|这个答案|什么意思|然后呢|所以呢)", value):
         return IntentResult("FOLLOW_UP", 0.96, "rule")
-    if re.search(r"题|驾驶|机动车|交通|道路|车道|标志|扣分|罚款|速度|路口", value):
+    if re.search(r"题|驾驶|机动车|交通|道路|车道|标志|扣分|罚款|速度|路口|酒驾|醉驾|驾驶证|超车|停车|灯光|事故|高速|轮胎|方向盘", value):
         return IntentResult("QUESTION_ANSWER", 0.9, "rule")
     return None
 
@@ -79,7 +84,7 @@ def _model_intent(text: str, has_context: bool) -> IntentResult | None:
             f"{settings.dashscope_base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {settings.dashscope_api_key}"},
             json=payload,
-            timeout=min(settings.model_timeout_seconds, 12),
+            timeout=min(settings.model_timeout_seconds, 3),
         )
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]

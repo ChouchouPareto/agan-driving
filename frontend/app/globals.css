@@ -128,14 +128,15 @@ summary { cursor: pointer; font-weight: 600; }
 .sectionDivider { display: flex; align-items: center; gap: 12px; color: var(--secondary); font-size: 13px; margin: 6px 0 16px; }
 .sectionDivider::before, .sectionDivider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-.chatPage { min-width: 0; min-height: calc(100vh - 200px); display: flex; flex-direction: column; }
-.chatStream { min-width: 0; flex: 1; display: grid; align-content: start; gap: 18px; padding-bottom: 28px; }
+.main:has(.chatPage) { height: calc(100dvh - 68px); padding-top: 0; padding-bottom: 0; overflow: hidden; }
+.chatPage { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.chatStream { min-width: 0; min-height: 0; flex: 1 1 auto; display: grid; align-content: start; gap: 18px; padding: 28px 4px 34px; overflow-y: auto; overscroll-behavior: contain; scroll-padding-bottom: 34px; scrollbar-gutter: stable; }
 .conversationTurn { min-width: 0; max-width: 100%; display: grid; gap: 12px; }
 .conversationTurn > * { min-width: 0; }
 .assistantMessage { display: flex; align-items: flex-start; gap: 10px; max-width: 88%; }
 .assistantMessage.compact { align-items: center; }
 .assistantAvatar { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: white; background: var(--primary); }
-.assistantMessage p { margin: 7px 0 0; line-height: 1.7; }
+.assistantMessage p { margin: 7px 0 0; line-height: 1.72; white-space: pre-wrap; }
 .messageAuthor { color: var(--secondary); font-size: 12px; font-weight: 650; }
 .promptSuggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .promptSuggestions button { min-height: 40px; padding: 8px 12px; border: 1px solid #d9d6ff; border-radius: 999px; background: var(--primary-soft); color: #4943d5; }
@@ -147,7 +148,7 @@ summary { cursor: pointer; font-weight: 600; }
 .chatStream .answer .actions .button { min-width: 0; flex: 1 1 148px; white-space: normal; }
 .chatStream .ticket { margin-left: 44px; }
 .chatError { margin-left: 44px; padding: 12px 14px; border-radius: 10px; color: var(--danger); background: #fff2f3; }
-.chatComposer { position: sticky; bottom: 0; z-index: 8; padding: 8px 0 12px; background: linear-gradient(180deg, rgba(247,247,248,0), var(--background) 18%); }
+.chatComposer { position: relative; flex: 0 0 auto; z-index: 8; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(247,247,248,0), var(--background) 18%); }
 .toolTray { width: fit-content; margin: 0 auto 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 6px 24px rgba(29,27,64,.08); overflow: hidden; }
 .toolTrayToggle { min-height: 40px; padding: 8px 12px; display: flex; align-items: center; gap: 7px; border: 0; background: white; color: var(--secondary); font-size: 13px; }
 .toolTrayToggle svg:last-child { transition: transform 160ms ease; }
@@ -312,7 +313,8 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
   .topbar .brandMark { display: none; }
   .topbar .brand { font-size: 18px; }
   .main { width: 100%; padding: 0 16px; }
-  .chatPage { min-height: calc(100dvh - 62px); }
+  .main:has(.chatPage) { height: calc(100dvh - 62px); padding: 0 16px; }
+  .chatPage { min-height: 0; }
   .chatPage.isWelcome .chatStream { padding: clamp(76px, 15vh, 150px) 6px 24px; }
   .welcomeEyebrow { margin-bottom: 14px; }
   .welcomePanel h1 { font-size: 34px; }
@@ -320,7 +322,7 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
   .promptSuggestions { margin-top: 30px; gap: 11px; }
   .promptSuggestions button { min-height: 54px; font-size: 15px; border-radius: 18px; }
   .promptSuggestions button:nth-child(2) { min-width: 100%; }
-  .chatStream { padding: 24px 2px 26px; }
+  .chatStream { padding: 24px 2px 30px; scrollbar-gutter: auto; }
   .assistantMessage { max-width: 100%; }
   .userMessage { max-width: 88%; }
   .chatStream .answer { width: 100%; max-width: 100%; margin-left: 0; padding: 18px 16px; border-radius: 20px; }

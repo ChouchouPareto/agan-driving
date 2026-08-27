@@ -26,11 +26,12 @@ export function AskWorkspace() {
   const [localExchanges, setLocalExchanges] = useState<LocalExchange[]>([]);
   const [text, setText] = useState(params.get("text") ?? "");
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [pendingUser, setPendingUser] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [knowledge, setKnowledge] = useState<KnowledgeStatus | null>(null);
   const controller = useRef<AbortController | null>(null);
-  const streamEnd = useRef<HTMLDivElement | null>(null);
+  const chatStream = useRef<HTMLElement | null>(null);
   const isBusy = status.startsWith("正在");
 
   function isExpiredSession(reason: unknown) {
@@ -99,7 +100,15 @@ export function AskWorkspace() {
     // Restore a message only once after authentication.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { streamEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, localExchanges, status]);
+  useEffect(() => {
+    const container = chatStream.current;
+    if (!container) return;
+    const frame = window.requestAnimationFrame(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      container.scrollTo({ top: container.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, localExchanges, pendingUser, status, error]);
 
   async function streamAnswer(questionId: string) {
     setStatus("正在查找可信依据…");
@@ -123,25 +132,26 @@ export function AskWorkspace() {
     event.preventDefault();
     const command = text.trim();
     if (isBusy || !command) return;
-    setError(""); setStatus("正在识别你的意图…");
+    setError(""); setPendingUser(command); setText(""); setStatus("正在识别你的意图…");
     try {
       const dispatch = await api.sendAgentMessage(conversationId, command);
       rememberConversation(dispatch.conversation_id);
-      setText("");
       if (dispatch.action === "NAVIGATE" && dispatch.destination) {
-        setStatus(""); router.push(dispatch.destination); return;
+        setPendingUser(""); setStatus(""); router.push(dispatch.destination); return;
       }
       if (dispatch.action === "RESPOND") {
         setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent }]);
-        setStatus(""); return;
+        setPendingUser(""); setStatus(""); return;
       }
       if (!dispatch.question_id) throw new Error("未创建问题");
       const question = await api.getQuestion(dispatch.question_id);
       setMessages(items => [...items.filter(item => item.id !== question.id), question]);
+      setPendingUser("");
       await streamAnswer(question.id);
     } catch (reason) {
       if (isExpiredSession(reason)) { await returnToInvitation(command); return; }
       if ((reason as Error).name !== "AbortError") setError(reason instanceof Error ? reason.message : "提问失败");
+      setPendingUser(""); setText(command);
       setStatus("");
     }
   }
@@ -186,10 +196,10 @@ export function AskWorkspace() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "图片提问失败"); setStatus(""); }
   }
 
-  const hasConversation = messages.length > 0 || localExchanges.length > 0 || Boolean(status || error);
+  const hasConversation = messages.length > 0 || localExchanges.length > 0 || Boolean(pendingUser || status || error);
 
   return <div className={`chatPage ${hasConversation ? "hasConversation" : "isWelcome"}`}>
-    <section className="chatStream" aria-label="与超级陪驾的对话" aria-busy={isBusy}>
+    <section ref={chatStream} className="chatStream" aria-label="与超级陪驾的对话" aria-busy={isBusy}>
       {!hasConversation && <div className="welcomePanel"><span className="welcomeEyebrow">C1 科目一 · AI 学习伙伴</span><h1>Hi，我是超级陪驾</h1><p>比起只告诉你答案，我更想陪你真正看懂。今天想先学什么？</p>{knowledge && <div className={`knowledgeConnection ${knowledge.connected ? "connected" : ""}`} title={knowledge.notice}><Database aria-hidden="true"/><span>{knowledge.connected ? `已连接 ${knowledge.item_count.toLocaleString("zh-CN")} 道 ${knowledge.scope} 知识库` : "知识库暂未连接"}</span>{knowledge.is_preview && knowledge.connected && <b>预览版</b>}</div>}<div className="promptSuggestions"><button onClick={() => setText("我要刷题")}><span>给我出 5 道科目一题</span><ArrowRight aria-hidden="true"/></button><button onClick={() => setText("驾驶机动车通过没有交通信号的交叉路口怎样行驶？")}><span>没有交通信号的路口怎么走？</span><ArrowRight aria-hidden="true"/></button><button onClick={() => setText("复习一下我的错题")}><span>复习一下我的错题</span><ArrowRight aria-hidden="true"/></button></div></div>}
       {messages.map(question => <div className="conversationTurn" key={question.id}>
         <div className="userMessage"><p>{question.text}</p></div>
@@ -197,9 +207,9 @@ export function AskWorkspace() {
         {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
       </div>)}
       {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级陪驾 · 学车伙伴</span><p>{item.assistant}</p></div></div></div>)}
+      {pendingUser && <div className="conversationTurn pendingTurn"><div className="userMessage"><p>{pendingUser}</p></div></div>}
       {status && <div className="assistantMessage compact" aria-live="polite"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div className="status"><span className="dot"/>{status}</div></div>}
       {error && <div className="chatError" role="alert">{error}</div>}
-      <div ref={streamEnd}/>
     </section>
     <section id="ask-composer" className="chatComposer">
       <nav className="quickTools" aria-label="快捷学习入口"><Link href="/practice"><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><Link href="/practice?mode=wrong"><History aria-hidden="true"/>错题本</Link><Link href="/practice?mode=favorites"><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={() => setToolsOpen(true)}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
