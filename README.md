@@ -1,5 +1,12 @@
 # 阿甘学车｜AI 学车陪伴产品
 
+## 线上测试入口
+
+- [学员端｜体验阿甘学车](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/enter)
+- [校长端｜打开校长工作台](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/staff/enter)
+
+> 当前为邀请制测试版，请向项目管理员获取对应身份的邀请码。
+
 当前实现“可信问答＋OCR可信输入纵向切片”：邀请码进入、文字/图片提问、OCR校正确认、标准题确定性回答、开放问题安全拒答/Dify适配、二次解释、学员反馈和“不懂就问校长”工单。
 
 ## 当前边界
@@ -10,8 +17,6 @@
 - 未实现：完整教练后台、提醒、看板、ERP/小程序；
 - 未完成：真实Dify/模型冒烟（当前没有配置凭证）；
 - 当前内置2道结构验证题，50道专业审核样本仍待内容准备。
-
-测试邀请码：`INVITE_CODE_REMOVED`。
 
 ## 环境
 
