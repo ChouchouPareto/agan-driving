@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     rag_model_timeout_seconds: int = 20
     rag_max_retries: int = 2
     database_url: str = "sqlite:///../data/app.db"
+    storage_backend: str = "local"
+    tos_bucket: str = ""
+    tos_endpoint: str = "tos-cn-beijing.volces.com"
+    tos_region: str = "cn-beijing"
+    tos_access_key: str = ""
+    tos_secret_key: str = ""
+    tos_session_token: str = ""
+    tos_database_backup_key: str = "backups/app.db"
     dify_base_url: str = ""
     dify_api_key: str = ""
     dify_workflow_id: str = ""
@@ -46,6 +54,10 @@ class Settings(BaseSettings):
     @property
     def mock_ocr(self) -> bool:
         return not self.dashscope_api_key
+
+    @property
+    def tos_enabled(self) -> bool:
+        return self.storage_backend.lower() == "tos" and bool(self.tos_bucket)
 
 
 @lru_cache

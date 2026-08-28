@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import AgentTurn, Answer, Conversation, Feedback, KnowledgeSource, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
-from app.ocr_services import LocalStorage, process_ocr_task, store_asset
+from app.ocr_services import process_ocr_task, store_asset
+from app.storage import get_object_storage
 from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, LearningContextPatch, MockExamSubmit, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
 from app.pe import classify_intent, resolve_follow_up
@@ -260,7 +261,7 @@ def get_asset_content(asset_id: str, student: Student = Depends(current_student)
     if not asset or asset.status != "READY" or (expires_at and expires_at <= datetime.now(timezone.utc)):
         raise error(404, "ASSET_EXPIRED", "图片已过期或不存在。")
     try:
-        content = LocalStorage().read(asset.storage_key)
+        content = get_object_storage().read(asset.storage_key)
     except FileNotFoundError as exc:
         raise error(404, "ASSET_NOT_FOUND", "图片已删除。") from exc
     return Response(content, media_type=asset.detected_mime, headers={"Cache-Control": "private, no-store", "Content-Disposition": "inline"})

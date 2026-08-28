@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import OCRField, OCRTask, UploadedAsset
+from app.storage import LocalStorage, get_object_storage
 
 
 ALLOWED_MIME = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -41,29 +42,6 @@ class OCRProviderError(RuntimeError):
     pass
 
 
-class LocalStorage:
-    def __init__(self) -> None:
-        self.root = Path(get_settings().ocr_storage_dir).resolve()
-        self.root.mkdir(parents=True, exist_ok=True)
-
-    def save(self, key: str, content: bytes) -> None:
-        path = (self.root / key).resolve()
-        if self.root not in path.parents:
-            raise ValueError("unsafe storage key")
-        path.write_bytes(content)
-
-    def read(self, key: str) -> bytes:
-        path = (self.root / key).resolve()
-        if self.root not in path.parents:
-            raise ValueError("unsafe storage key")
-        return path.read_bytes()
-
-    def delete(self, key: str) -> None:
-        path = (self.root / key).resolve()
-        if self.root in path.parents:
-            path.unlink(missing_ok=True)
-
-
 def validate_image(content: bytes, declared_mime: str) -> tuple[str, str]:
     settings = get_settings()
     if not content or len(content) > settings.ocr_max_image_bytes:
@@ -86,7 +64,7 @@ def validate_image(content: bytes, declared_mime: str) -> tuple[str, str]:
 def store_asset(db: Session, student_id: str, school_id: str, original_name: str, declared_mime: str, content: bytes) -> UploadedAsset:
     detected_mime, suffix = validate_image(content, declared_mime)
     storage_key = f"{uuid.uuid4().hex}{suffix}"
-    LocalStorage().save(storage_key, content)
+    get_object_storage().save(storage_key, content)
     asset = UploadedAsset(
         student_id=student_id,
         school_id=school_id,
@@ -188,7 +166,7 @@ def process_ocr_task(task_id: str) -> None:
             asset = db.get(UploadedAsset, task.asset_id)
             if not asset or asset.status != "READY":
                 raise OCRProviderError("asset unavailable")
-            content = LocalStorage().read(asset.storage_key)
+            content = get_object_storage().read(asset.storage_key)
             last_error: Exception | None = None
             result = None
             for attempt in range(get_settings().ocr_max_retries):
@@ -240,7 +218,7 @@ def delete_expired_assets() -> int:
     with SessionLocal() as db:
         assets = db.scalars(select(UploadedAsset).where(UploadedAsset.expires_at <= datetime.now(timezone.utc), UploadedAsset.status == "READY")).all()
         for asset in assets:
-            LocalStorage().delete(asset.storage_key)
+            get_object_storage().delete(asset.storage_key)
             asset.status = "DELETED"
             deleted += 1
         db.commit()

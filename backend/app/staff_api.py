@@ -125,13 +125,13 @@ def reply_ticket(ticket_id: str, payload: TicketReply, idempotency_key: str = He
 
 @router.get("/staff/assets/{asset_id}/content")
 def staff_asset(asset_id: str, staff: Staff = Depends(current_staff), db: Session = Depends(get_db)):
-    from app.api import LocalStorage
+    from app.storage import get_object_storage
     from fastapi.responses import Response
     asset = db.scalar(select(UploadedAsset).where(UploadedAsset.id == asset_id, UploadedAsset.school_id == staff.school_id, UploadedAsset.status == "READY"))
     if not asset:
         raise error(404, "NOT_FOUND", "图片不存在或无权查看。")
     try:
-        content = LocalStorage().read(asset.storage_key)
+        content = get_object_storage().read(asset.storage_key)
     except FileNotFoundError as exc:
         raise error(404, "ASSET_NOT_FOUND", "图片已删除。") from exc
     return Response(content, media_type=asset.detected_mime, headers={"Cache-Control": "private, no-store"})

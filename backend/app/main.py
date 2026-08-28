@@ -12,9 +12,11 @@ from app.knowledge_api import router as knowledge_router
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.services import seed
+from app.database_backup import backup_database, restore_database_if_needed
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    restore_database_if_needed()
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         seed(db)
@@ -28,12 +30,26 @@ app.include_router(staff_router)
 app.include_router(knowledge_router)
 
 
+@app.middleware("http")
+async def persist_sqlite_mutations(request: Request, call_next):
+    response = await call_next(request)
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and response.status_code < 500:
+        backup_database()
+    return response
+
+
 @app.get("/api/v1/health")
 def health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     settings = get_settings()
-    return {"status": "ok", "service": "agan-driving-api", "environment": settings.app_env, "model_connected": not settings.mock_ai}
+    return {
+        "status": "ok",
+        "service": "agan-driving-api",
+        "environment": settings.app_env,
+        "model_connected": not settings.mock_ai,
+        "persistent_storage": "tos" if settings.tos_enabled else "local",
+    }
 
 
 @app.exception_handler(RequestValidationError)
