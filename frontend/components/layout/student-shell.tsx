@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BookOpenCheck, Check, Heart, History, Menu, MessageSquarePlus, Pencil, Search, Settings, Sparkles, X } from "lucide-react";
+import { BookOpenCheck, Check, ClipboardCheck, Heart, History, Menu, MessageSquarePlus, Pencil, Search, Settings, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Brand } from "./brand";
 import { learningStage, LICENSE_CATEGORIES, licenseCategory } from "@/lib/learning-catalog";
@@ -54,6 +54,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
         <nav className="drawerNav" onClick={() => setDrawerOpen(false)}>
           <Link href={`/ask?${contextQuery}`}><Sparkles aria-hidden="true"/><span>与超级陪驾对话</span></Link>
           <Link href={`/practice?${contextQuery}`}><BookOpenCheck aria-hidden="true"/><span>顺序刷题</span></Link>
+          <Link href={`/exam?${contextQuery}`}><ClipboardCheck aria-hidden="true"/><span>模拟考试</span></Link>
           <Link href={`/practice?mode=wrong&${contextQuery}`}><History aria-hidden="true"/><span>错题本</span></Link>
           <Link href={`/practice?mode=favorites&${contextQuery}`}><Heart aria-hidden="true"/><span>收藏题</span></Link>
         </nav>

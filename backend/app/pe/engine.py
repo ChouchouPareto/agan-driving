@@ -11,7 +11,7 @@ INTENTS = {
     "QUESTION_ANSWER", "FOLLOW_UP", "START_PRACTICE", "WRONG_QUESTIONS",
     "FAVORITES", "LEARNING_PROGRESS", "SCHOOL_SERVICE", "HUMAN_HELP",
     "GREETING", "CHITCHAT", "EMOTIONAL_SUPPORT", "THANKS", "PRODUCT_HELP",
-    "PRACTICAL_TRAINING",
+    "PRACTICAL_TRAINING", "MOCK_EXAM",
     "OUT_OF_SCOPE", "SENSITIVE_CONTENT", "PROMPT_INJECTION",
 }
 
@@ -37,6 +37,7 @@ def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
     ):
         return IntentResult("SENSITIVE_CONTENT", 0.99, "security_rule")
     rules = [
+        (r"模拟考|模拟考试|考试模式|测一下能不能过", "MOCK_EXAM"),
         (r"错题", "WRONG_QUESTIONS"),
         (r"收藏", "FAVORITES"),
         (r"刷题|练题|顺序练习|开始练习|做题", "START_PRACTICE"),

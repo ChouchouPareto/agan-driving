@@ -115,3 +115,12 @@ class PracticeAnswer(BaseModel):
 
 class FavoritePatch(BaseModel):
     is_favorite: bool
+
+
+class MockExamAnswer(BaseModel):
+    question_id: str
+    answer: str = Field(min_length=1, max_length=16)
+
+
+class MockExamSubmit(BaseModel):
+    answers: list[MockExamAnswer] = Field(min_length=1, max_length=100)

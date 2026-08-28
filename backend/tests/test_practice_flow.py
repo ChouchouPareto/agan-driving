@@ -54,3 +54,19 @@ def test_learning_context_supports_catalog_and_c1_c2_theory_sharing(client):
     assert unavailable.status_code == 200 and unavailable.json()["items"] == []
     rejected = client.patch("/api/v1/me/learning-context", headers=headers, json={"license_type": "X9", "subject": "subject-1"})
     assert rejected.status_code == 422 and rejected.json()["error"]["code"] == "INVALID_LEARNING_CONTEXT"
+
+
+def test_insights_and_mock_exam_form_a_learning_loop(client):
+    seed_active_bank(); headers = student_headers(client)
+    exam = client.get("/api/v1/practice/mock-exam?size=2", headers=headers)
+    assert exam.status_code == 200 and len(exam.json()["items"]) == 2
+    items = exam.json()["items"]
+    assert all("standard_answer" not in item for item in items)
+    answers = [{"question_id": item["id"], "answer": item["options"][0]["label"]} for item in items]
+    submitted = client.post("/api/v1/practice/mock-exam", headers=headers, json={"answers": answers})
+    assert submitted.status_code == 200 and submitted.json()["total"] == 2
+    assert 0 <= submitted.json()["score"] <= 100
+    insights = client.get("/api/v1/practice/insights", headers=headers)
+    assert insights.status_code == 200
+    assert insights.json()["summary"]["attempted"] == 2
+    assert insights.json()["readiness"] == "BUILDING"
