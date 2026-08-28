@@ -12,7 +12,6 @@ dependencies = [
   "pillow>=11,<12",
   "python-multipart>=0.0.20,<1",
   "openpyxl>=3.1,<4",
-  "tos>=2,<3",
 ]
 
 [dependency-groups]
