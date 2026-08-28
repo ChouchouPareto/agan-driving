@@ -1,0 +1,81 @@
+{
+  "dataset": "authoritative-driving-advisory-cn",
+  "version": "2026-08-28",
+  "documents": [
+    {
+      "external_id": "mps-162-exam-structure",
+      "topic": "LEARNING_PROCESS",
+      "title": "机动车驾驶证申领和使用规定：考试科目与顺序",
+      "source_org": "中华人民共和国公安部",
+      "source_url": "https://ga.wuxi.gov.cn/doc/2022/01/12/3584325.shtml",
+      "document_no": "公安部令第162号",
+      "region": "全国",
+      "license_types": ["C1", "C2"],
+      "keywords": ["学车流程", "科目一", "科目二", "科目三", "科目四", "考试顺序", "领证"],
+      "summary": "法定考试分为科目一、科目二、科目三；通常所称科目四是科目三安全文明驾驶常识考试。",
+      "content": "第三十条规定机动车驾驶人考试包括科目一、科目二、科目三。第三十九条规定科目一合格后可预约科目二或科目三道路驾驶技能；科目二、科目三道路驾驶技能均合格后，可当日参加科目三安全文明驾驶常识考试。第六十条规定全部考试合格并完成安全文明驾驶教育和宣誓后，当日核发驾驶证。",
+      "published_at": "2022-01-12",
+      "effective_at": "2022-04-01"
+    },
+    {
+      "external_id": "mps-162-c1-c2-minimum-intervals",
+      "topic": "LICENSE_TIMELINE",
+      "title": "机动车驾驶证申领和使用规定：C1/C2考试预约最低间隔",
+      "source_org": "中华人民共和国公安部",
+      "source_url": "https://ga.wuxi.gov.cn/doc/2022/01/12/3584325.shtml",
+      "document_no": "公安部令第162号",
+      "region": "全国",
+      "license_types": ["C1", "C2"],
+      "keywords": ["最快拿证", "拿证周期", "多久拿证", "科目二预约", "科目三预约", "最短时间"],
+      "summary": "C1/C2取得学习驾驶证明满10日可预约科目二；C2满20日、C1满30日可预约科目三道路驾驶技能。",
+      "content": "第四十三条规定，小型汽车和小型自动挡汽车在取得学习驾驶证明满十日后可预约科目二。第四十四条规定，小型自动挡汽车在取得学习驾驶证明满二十日后可预约科目三，小型汽车满三十日后可预约科目三。上述是最早预约条件，不等于保证拿证日期；实际还受培训完成、预约排队和考试通过情况影响。",
+      "published_at": "2022-01-12",
+      "effective_at": "2022-04-01"
+    },
+    {
+      "external_id": "mps-162-learning-proof-validity",
+      "topic": "POLICY_REGULATION",
+      "title": "机动车驾驶证申领和使用规定：学习驾驶证明有效期",
+      "source_org": "中华人民共和国公安部",
+      "source_url": "https://ga.wuxi.gov.cn/doc/2022/01/12/3584325.shtml",
+      "document_no": "公安部令第162号",
+      "region": "全国",
+      "license_types": ["C1", "C2"],
+      "keywords": ["有效期", "三年", "成绩作废", "学习驾驶证明"],
+      "summary": "学习驾驶证明有效期为三年，需在有效期内完成科目二和科目三考试。",
+      "content": "第四十一条规定学习驾驶证明有效期为三年，申请人应在有效期内完成科目二和科目三考试；未在有效期内完成的，已合格科目成绩作废。",
+      "published_at": "2022-01-12",
+      "effective_at": "2022-04-01"
+    },
+    {
+      "external_id": "mot-2022-training-outline",
+      "topic": "INDUSTRY_KNOWLEDGE",
+      "title": "机动车驾驶培训教学大纲（2022年修订）",
+      "source_org": "交通运输部、公安部",
+      "source_url": "https://www.mot.gov.cn/gongkai/zcjd/202512/t20251226_4191340.html",
+      "document_no": "交运发〔2022〕36号",
+      "region": "全国",
+      "license_types": ["C1", "C2", "C3", "C4", "C5", "C6"],
+      "keywords": ["培训大纲", "学时", "计时培训", "教学", "防御性驾驶", "新能源"],
+      "summary": "2022年大纲强化防御性驾驶、应急处置、新能源汽车和辅助驾驶安全使用，并允许各地结合实际调整培训内容与学时。",
+      "content": "交通运输部政策解读明确，2022年大纲替代已不适应现状的2016年版本，增加辅助驾驶和新能源汽车安全使用、防御性驾驶及应急处置内容；各省份可结合当地考试实际增加培训内容并调整学时。因此具体学时应继续核对所在地实施口径。",
+      "published_at": "2022-03-28",
+      "effective_at": "2022"
+    },
+    {
+      "external_id": "mps-122-exam-booking-channel",
+      "topic": "LEARNING_PROCESS",
+      "title": "互联网交通安全综合服务管理平台：考试预约服务",
+      "source_org": "公安机关交通管理部门",
+      "source_url": "https://hb.122.gov.cn/views/helpMain.html?type=/help/help-netxh",
+      "document_no": null,
+      "region": "全国平台（页面为湖北入口）",
+      "license_types": ["C1", "C2"],
+      "keywords": ["考试预约", "取消预约", "异地考试", "交管12123", "122平台"],
+      "summary": "官方互联网交通安全综合服务管理平台提供考试预约、取消预约、异地考试预约及学习驾驶证明打印等服务入口。",
+      "content": "公安机关交通管理部门官方平台的驾驶证业务包含考试预约、取消预约、打印学习驾驶证明、异地考试预约和考试费缴纳等入口。实际可约日期与结果以学员所在地平台显示为准。",
+      "published_at": null,
+      "effective_at": null
+    }
+  ]
+}

@@ -185,6 +185,14 @@ summary { cursor: pointer; font-weight: 600; }
 .practiceOption.wrong { border-color: #eda5ad; background: #fff2f3; color: #a72b39; }
 .practiceResult { margin-top: 18px; border-radius: 10px; padding: 14px; line-height: 1.6; }
 .practiceResult p { margin: 6px 0 0; }
+.navigationSuggestion { margin-top: 12px; min-height: 42px; padding: 0 16px; border: 1px solid var(--primary); border-radius: 999px; background: var(--primary); color: #fff; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.navigationSuggestion:hover { filter: brightness(.94); }
+.navigationSuggestion:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 26%, transparent); outline-offset: 3px; }
+.mnemonicNote { margin: 14px 0; padding: 13px 15px; border: 1px solid #bcd9d1; border-radius: 14px; background: #f1f8f5; display: flex; align-items: flex-start; gap: 10px; color: #185f50; }
+.mnemonicNote div { display: grid; gap: 3px; }
+.mnemonicNote span { font-size: 13px; color: #52756d; }
+.mnemonicNote strong { font-size: 16px; line-height: 1.55; }
+.mnemonicNote.compact { margin: 12px 0 4px; background: rgba(255,255,255,.6); }
 .correctResult { background: #eef9f3; color: #116a3e; }
 .wrongResult { background: #fff2f3; color: #a72b39; }
 .askAiButton { width: fit-content; margin-top: 12px; background: white; color: var(--primary); border: 1px solid #d8d5ff; text-decoration: none; }
@@ -443,6 +451,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .answerActions .specularButton { width: 100%; min-width: 0; }
 .answerActions .resolvedAction { min-height: 50px; }
 .answerActions .minorAction { min-height: 42px; align-self: center; padding: 8px 10px; font-size: 12px; }
+.chatStream .noEvidenceAnswer { max-width: min(620px, calc(100% - 50px)); width: auto; padding: 20px 22px; border: 1px solid #d8e5e1; border-radius: 20px; background: #fbfdfc; }
+.noEvidenceEyebrow { display: inline-flex; width: fit-content; padding: 5px 9px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 750; }
+.chatStream .noEvidenceAnswer .direct { margin: 13px 0 5px; font-size: 20px; }
+.noEvidenceAnswer > p { max-width: 520px; margin: 0; color: var(--secondary); font-size: 15px; line-height: 1.7; }
+.noEvidenceActions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 9px; }
+.noEvidenceActions button { min-height: 44px; padding: 0 15px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease; }
+.noEvidencePrimary { border: 1px solid var(--primary); background: var(--primary); color: white; }
+.noEvidenceSecondary { border: 1px solid var(--border); background: white; color: var(--text); }
+.noEvidencePrimary:hover { filter: brightness(.94); }
+.noEvidenceSecondary:hover { border-color: #91bfb3; background: var(--primary-soft); }
+.noEvidenceActions button:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 24%, transparent); outline-offset: 2px; }
+.noEvidenceActions button:disabled { cursor: not-allowed; opacity: .55; }
 
 /* BubbleMenu-inspired pill navigation. */
 .topbarIcon { border: 1px solid transparent; border-radius: 50%; }
@@ -553,6 +573,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
   .answerActions { grid-template-columns: minmax(150px, 2fr) 46px 46px !important; gap: 7px !important; }
   .answerActions .specularButton { min-height: 44px; padding-inline: 9px; }
   .answerActions .minorAction { width: 46px; padding: 0; }
+  .chatStream .noEvidenceAnswer { width: 100%; max-width: 100%; padding: 17px 16px; }
+  .noEvidenceActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .noEvidenceActions button { width: 100%; padding-inline: 10px; }
   .minorActionText { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); }
   .practiceHero { align-items: center; }
   .practiceHero p { max-width: 230px; }
@@ -563,4 +586,65 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
   .favoriteButton span { display: none; }
   .examCard { min-height: 0; }
   .examResult { margin-top: 28px; padding: 28px 20px; }
+}
+
+/* Homepage learner voices: one roomy prompt, rotating without creating dead space. */
+.chatPage.isWelcome .chatStream { padding-top: clamp(38px, 8vh, 76px); }
+.learnerVoice { width: min(100%, 650px); margin-top: 28px; display: grid; gap: 9px; }
+.learnerVoice > span { color: var(--primary); font-size: 12px; font-weight: 750; letter-spacing: .04em; }
+.learnerVoice > button { width: 100%; min-height: 108px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 22px; border: 1px solid var(--border); border-radius: 24px; background: var(--soft-surface); color: var(--text); text-align: left; animation: learnerVoiceIn 280ms ease both; }
+.learnerVoice > button:hover { border-color: #b9ccc5; background: #e7eeeb; }
+.learnerVoice > button strong { max-width: 560px; font-size: 17px; font-weight: 560; line-height: 1.75; }
+.learnerVoice > button svg { flex: 0 0 auto; color: var(--primary); }
+@keyframes learnerVoiceIn { from { opacity: .35; transform: translateY(4px); } }
+
+/* A single compact return language across student, practice and staff pages. */
+.backLink, .backButton { width: fit-content; min-height: 36px; margin: 0 0 14px; padding: 7px 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.82); color: var(--secondary); font-size: 12px; font-weight: 650; line-height: 1; text-decoration: none; transition: border-color 160ms ease, background 160ms ease, color 160ms ease; }
+button.backLink { cursor: pointer; }
+.backLink:hover, .backButton:hover { border-color: #b9ccc5; background: white; color: var(--text); }
+.backButton svg { flex: 0 0 auto; }
+
+/* Staff header keeps navigation lanes separate at every width. */
+.staffTopbar { height: auto; min-height: 68px; display: grid; grid-template-columns: minmax(150px,1fr) auto minmax(280px,1fr); gap: 16px; padding: 10px 22px; }
+.staffTopbar .brand { position: static; left: auto; transform: none; justify-self: center; }
+.staffHome { min-height: 36px; width: fit-content; padding: 7px 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; background: white; color: var(--secondary); font-size: 12px; font-weight: 650; text-decoration: none; }
+.staffHome:hover { color: var(--text); background: var(--soft-surface); }
+.staffNav { justify-self: end; gap: 5px; white-space: nowrap; }
+.staffNav a { min-height: 36px; padding: 8px 10px; display: inline-flex; align-items: center; border-radius: 999px; color: var(--secondary); font-size: 12px; font-weight: 650; text-decoration: none; }
+.staffNav a:hover { color: var(--text); background: var(--soft-surface); }
+
+@media (max-width: 800px) {
+  .staffTopbar { grid-template-columns: auto 1fr; gap: 8px 12px; padding: 9px 14px; }
+  .staffTopbar .brand { justify-self: end; }
+  .staffNav { grid-column: 1 / -1; width: 100%; justify-self: stretch; justify-content: center; overflow-x: auto; padding-top: 7px; border-top: 1px solid var(--border); scrollbar-width: none; }
+  .staffNav::-webkit-scrollbar { display: none; }
+}
+
+@media (max-width: 600px) {
+  .chatPage.isWelcome .chatStream { padding-top: clamp(30px, 6vh, 54px); }
+  .learnerVoice { margin-top: 22px; }
+  .learnerVoice > button { min-height: 116px; padding: 18px; border-radius: 21px; }
+  .learnerVoice > button strong { font-size: 15px; line-height: 1.7; }
+  .staffHome span { display: none; }
+}
+
+/* Keep the original three homepage entries; only the middle one rotates. */
+.homePrompts { width: min(100%, 650px); margin-top: 28px; display: grid; gap: 12px; }
+.homePrompt { min-height: 58px; padding: 13px 18px; display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; border: 1px solid transparent; border-radius: 20px; background: var(--soft-surface); color: var(--text); text-align: left; }
+.homePrompt.compact { max-width: 100%; }
+.homePrompts > .homePrompt:first-child { width: 75%; }
+.homePrompts > .homePrompt:last-child { width: 60%; }
+.homePrompt:hover { border-color: #b9ccc5; background: #e7eeeb; }
+.homePrompt strong { font-size: 16px; font-weight: 540; line-height: 1.5; }
+.homePrompt svg { width: 20px; flex: 0 0 auto; color: var(--primary); }
+.homePrompts .learnerVoice { width: 100%; max-width: 100%; margin-top: 0; display: block; }
+.homePrompts .learnerVoice > button { width: 100%; max-width: 100%; height: 58px; min-height: 58px; padding: 13px 18px; border-radius: 20px; }
+.homePrompts .learnerVoice > button strong { max-width: none; font-size: 16px; font-weight: 540; line-height: 1.5; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .homePrompts { margin-top: 22px; }
+  .homePrompt { min-height: 54px; border-radius: 18px; }
+  .homePrompt strong { font-size: 15px; }
+  .homePrompts .learnerVoice > button { height: 54px; min-height: 54px; border-radius: 18px; }
+  .homePrompts .learnerVoice > button strong { font-size: 15px; }
 }

@@ -9,9 +9,8 @@ export function InvitationForm() {
     localStorage.removeItem("access_token");
     if (sessionStorage.getItem("super-driving-session-expired")) window.setTimeout(() => setNotice("登录已过期，请重新进入。你刚才输入的内容已保留。"), 0);
     sessionStorage.removeItem("super-driving-session-expired");
-    fetch("/api/backend/me").then(async response => {
+    fetch("/api/backend/me").then(response => {
       if (response.ok) router.replace("/ask");
-      else await fetch("/api/session", { method: "DELETE" });
     }).catch(() => undefined);
   }, [router]);
   async function submit(event: FormEvent) {

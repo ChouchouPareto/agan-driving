@@ -1,0 +1,11 @@
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+data/*.db
+data/private-assets/
+data/rag/
+.vefaas/

@@ -13,7 +13,7 @@ from app.schemas import InvitationVerify, TicketAcknowledge, TicketClaim, Ticket
 from app.services import digest
 
 router = APIRouter(prefix="/api/v1")
-LABELS = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
+LABELS = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
 
 
 def current_staff(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> Staff:

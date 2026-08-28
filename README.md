@@ -31,6 +31,15 @@ uv run uvicorn app.main:app --reload --port 8000
 
 API文档：`http://localhost:8000/docs`。
 
+测试环境压力冒烟（会创建匿名测试会话，请勿直接指向正式库）：
+
+```bash
+cd backend
+./.venv/bin/python scripts/load_smoke.py --base-url http://127.0.0.1:8000/api/v1 --requests 100 --concurrency 10
+```
+
+输出成功率、吞吐量、平均延迟以及 P50/P95/P99。正式测试应从 10 并发逐级升到目标并发，并同时观察 API 错误率、数据库写入和模型限流。
+
 ## 前端
 
 ```bash

@@ -77,6 +77,22 @@ class Conversation(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class AgentTurn(Base):
+    __tablename__ = "agent_turns"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), index=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id"), index=True)
+    user_text: Mapped[str] = mapped_column(Text)
+    assistant_text: Mapped[str] = mapped_column(Text)
+    intent: Mapped[str] = mapped_column(String, index=True)
+    skill_id: Mapped[str] = mapped_column(String)
+    model_id: Mapped[str] = mapped_column(String)
+    prompt_version: Mapped[str] = mapped_column(String)
+    token_usage: Mapped[int] = mapped_column(Integer, default=0)
+    is_fallback: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Question(Base):
     __tablename__ = "questions"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
@@ -337,6 +353,26 @@ class RetrievalTrace(Base):
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class AdvisoryKnowledgeDocument(Base):
+    __tablename__ = "advisory_knowledge_documents"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uid)
+    external_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    topic: Mapped[str] = mapped_column(String, index=True)
+    title: Mapped[str] = mapped_column(String)
+    source_org: Mapped[str] = mapped_column(String)
+    source_url: Mapped[str] = mapped_column(Text)
+    document_no: Mapped[str | None] = mapped_column(String, nullable=True)
+    region: Mapped[str] = mapped_column(String, default="全国", index=True)
+    license_types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
+    summary: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    published_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    effective_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", index=True)
 
 
 class EvaluationDataset(Base):

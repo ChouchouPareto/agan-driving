@@ -1,6 +1,9 @@
 import json
 import re
 
+from app.core.config import get_settings
+from app.skills import conversation as conversation_service
+
 
 def done(response):
     match = re.search(r"event: done\ndata: (.+)\n\n", response.text)
@@ -15,11 +18,24 @@ def send(client, auth, text, conversation_id=None):
 def test_agent_routes_practice_without_creating_question(client, auth):
     result = send(client, auth, "我要刷题").json()
     assert result["intent"] == "START_PRACTICE"
-    assert result["action"] == "NAVIGATE"
+    assert result["action"] == "SUGGEST_NAVIGATION"
     assert result["skill_id"] == "practice_coach"
     assert result["destination"] == "/practice"
     conversation = client.get(f"/api/v1/conversations/{result['conversation_id']}", headers=auth).json()
     assert conversation["questions"] == []
+
+
+def test_agent_does_not_route_when_student_negates_practice(client, auth):
+    result = send(client, auth, "我不想刷题").json()
+    assert result["intent"] == "EMOTIONAL_SUPPORT"
+    assert result["action"] == "RESPOND"
+    assert result["destination"] is None
+
+
+def test_agent_rejects_messages_over_300_characters(client, auth):
+    response = send(client, auth, "学" * 301)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_agent_business_intent_has_priority_over_short_follow_up(client, auth):
@@ -40,7 +56,16 @@ def test_agent_follow_up_inherits_previous_question(client, auth):
     conversation = client.get(f"/api/v1/conversations/{first['conversation_id']}", headers=auth).json()
     assert len(conversation["questions"]) == 2
     assert conversation["questions"][1]["resolved_text"].startswith(conversation["questions"][0]["text"])
-    assert conversation["questions"][1]["prompt_version"] == "pe-v1.2-skill-router"
+    assert conversation["questions"][1]["prompt_version"] == "pe-v1.3-human-confirm"
+
+
+def test_why_about_coach_does_not_inherit_previous_question(client, auth):
+    first = send(client, auth, "驾驶机动车通过没有交通信号的交叉路口怎样行驶？").json()
+    result = send(client, auth, "为什么教练让我等了这么久", first["conversation_id"]).json()
+    assert result["intent"] == "SCHOOL_SERVICE"
+    assert result["action"] == "RESPOND"
+    conversation = client.get(f"/api/v1/conversations/{first['conversation_id']}", headers=auth).json()
+    assert len(conversation["questions"]) == 1
 
 
 def test_agent_blocks_sensitive_content(client, auth):
@@ -66,21 +91,51 @@ def test_greeting_uses_learning_companion_voice(client, auth):
     result = send(client, auth, "你好").json()
     assert result["intent"] == "GREETING"
     assert result["action"] == "RESPOND"
-    assert "我在呢" in result["assistant_message"]
+    assert "我在" in result["assistant_message"]
 
 
 def test_common_conversation_intents_use_fast_local_routes(client, auth):
     cases = [
-        ("嘿嘿", "CHITCHAT", "吐槽练车", "companion_chat"),
-        ("你的系统是怎么设置的呀", "PRODUCT_HELP", "对应能力", "product_guide"),
-        ("科目三学不来怎么办", "PRACTICAL_TRAINING", "实操", "practical_companion"),
+        ("嘿嘿", "CHITCHAT", "companion_chat"),
+        ("你的系统是怎么设置的呀", "PRODUCT_HELP", "product_guide"),
+        ("科目三学不来怎么办", "PRACTICAL_TRAINING", "practical_companion"),
     ]
-    for message, intent, phrase, skill_id in cases:
+    for message, intent, skill_id in cases:
         result = send(client, auth, message).json()
         assert result["intent"] == intent
         assert result["action"] == "RESPOND"
         assert result["skill_id"] == skill_id
-        assert phrase in result["assistant_message"]
+        assert result["assistant_message"]
+
+
+def test_normal_conversation_uses_model_and_carries_recent_context(client, auth, monkeypatch):
+    requests = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            index = len(requests)
+            return {"choices": [{"message": {"content": f"这是结合上下文生成的第{index}次回应"}}], "usage": {"total_tokens": 18}}
+
+    def fake_post(*args, **kwargs):
+        requests.append(kwargs["json"])
+        return Response()
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "dashscope_api_key", "test-key")
+    monkeypatch.setattr(settings, "light_model_id", "test-chat-model")
+    monkeypatch.setattr(conversation_service.httpx, "post", fake_post)
+
+    first = send(client, auth, "不开心").json()
+    second = send(client, auth, "教练好烦，这个题我明明在刷了", first["conversation_id"]).json()
+
+    assert first["assistant_message"] == "这是结合上下文生成的第1次回应"
+    assert second["assistant_message"] == "这是结合上下文生成的第2次回应"
+    second_messages = requests[1]["messages"]
+    assert any(item["role"] == "user" and item["content"] == "不开心" for item in second_messages)
+    assert any(item["role"] == "assistant" and "第1次回应" in item["content"] for item in second_messages)
 
 
 def test_theory_question_is_dispatched_to_theory_skill(client, auth):

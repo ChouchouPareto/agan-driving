@@ -19,7 +19,7 @@ class ConversationCreate(BaseModel):
 
 class QuestionCreate(BaseModel):
     conversation_id: str
-    text: str = Field(min_length=2, max_length=2000)
+    text: str = Field(min_length=2, max_length=300)
 
 
 class QuestionCreated(BaseModel):
@@ -30,7 +30,7 @@ class QuestionCreated(BaseModel):
 
 class AgentMessageCreate(BaseModel):
     conversation_id: str | None = None
-    text: str = Field(min_length=1, max_length=2000)
+    text: str = Field(min_length=1, max_length=300)
     license_type: str = Field(default="C1", max_length=3)
     subject: str = Field(default="subject-1", max_length=16)
 
@@ -44,7 +44,7 @@ class AgentMessageResult(BaseModel):
     conversation_id: str
     intent: str
     skill_id: str
-    action: Literal["ANSWER", "NAVIGATE", "RESPOND"]
+    action: Literal["ANSWER", "NAVIGATE", "SUGGEST_NAVIGATION", "RESPOND"]
     question_id: str | None = None
     destination: str | None = None
     assistant_message: str | None = None

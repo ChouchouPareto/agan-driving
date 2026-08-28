@@ -10,13 +10,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.models import Answer, Conversation, Feedback, KnowledgeSource, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
+from app.models import AgentTurn, Answer, Conversation, Feedback, KnowledgeSource, KnowledgeVersion, OCRAuditLog, OCRField, OCRTask, Question, ReviewTicket, StandardQuestion, Student, StudentQuestionProgress, UploadedAsset
 from app.ocr_services import LocalStorage, process_ocr_task, store_asset
 from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, LearningContextPatch, MockExamSubmit, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
 from app.pe import classify_intent, resolve_follow_up
 from app.pe.prompts import PROMPT_VERSION
-from app.skills import resolve_skill
+from app.skills import generate_conversation_reply, resolve_skill
+from app.knowledge.advisory_service import retrieve_advisory_documents
+from app.knowledge.mnemonics import mnemonic_for
 
 router = APIRouter(prefix="/api/v1")
 LICENSE_TYPES = {"A1", "A2", "A3", "B1", "B2", "C1", "C2", "C3", "C4", "C5", "C6", "D", "E", "F", "M", "N", "P"}
@@ -143,7 +145,7 @@ def practice_questions(mode: str = Query(default="all", pattern="^(all|wrong|fav
     items = db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id, StandardQuestion.status == "VALID").order_by(StandardQuestion.external_id)).all()
     if mode == "wrong": items = [item for item in items if progress.get(item.id) and progress[item.id].last_correct is False]
     if mode == "favorites": items = [item for item in items if progress.get(item.id) and progress[item.id].is_favorite]
-    return {"knowledge_version": version.version_label, "summary": _practice_summary(db, student, version), "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "attempted": bool(progress.get(item.id) and progress[item.id].attempts), "last_correct": progress[item.id].last_correct if progress.get(item.id) else None, "is_favorite": progress[item.id].is_favorite if progress.get(item.id) else False} for item in items]}
+    return {"knowledge_version": version.version_label, "summary": _practice_summary(db, student, version), "items": [{"id": item.id, "external_id": item.external_id, "stem": item.stem, "options": item.options, "mnemonic": mnemonic_for(item.stem, item.explanation), "attempted": bool(progress.get(item.id) and progress[item.id].attempts), "last_correct": progress[item.id].last_correct if progress.get(item.id) else None, "is_favorite": progress[item.id].is_favorite if progress.get(item.id) else False} for item in items]}
 
 
 @router.post("/practice/questions/{question_id}/answer")
@@ -155,7 +157,7 @@ def answer_practice_question(question_id: str, payload: PracticeAnswer, student:
     correct = _record_practice_answer(db, student, version, question, selected)
     db.commit()
     progress = db.scalar(select(StudentQuestionProgress).where(StudentQuestionProgress.student_id == student.id, StudentQuestionProgress.standard_question_id == question.id))
-    return {"correct": correct, "standard_answer": question.standard_answer, "explanation": question.explanation, "is_favorite": bool(progress and progress.is_favorite), "summary": _practice_summary(db, student, version)}
+    return {"correct": correct, "standard_answer": question.standard_answer, "explanation": question.explanation, "mnemonic": mnemonic_for(question.stem, question.explanation), "is_favorite": bool(progress and progress.is_favorite), "summary": _practice_summary(db, student, version)}
 
 
 @router.patch("/practice/questions/{question_id}/favorite")
@@ -379,7 +381,7 @@ def _answer_payload(question: Question) -> dict | None:
 
 def _question_payload(db: Session, question: Question, student: Student) -> dict:
     review_ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
-    labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "校长说好了"}
+    labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
     ticket = None if not review_ticket else {"id": review_ticket.id, "status": review_ticket.status, "label": labels.get(review_ticket.status, "状态待确认"), "sla": "问题已进入队列，工作时间内预计2小时处理。"}
     answer = _answer_payload(question)
     if answer is not None and review_ticket and question.status == "NEEDS_REVIEW":
@@ -402,15 +404,24 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
         conversation = Conversation(student_id=student.id)
         db.add(conversation); db.flush()
     previous = db.scalar(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at.desc()))
+    previous_turn = db.scalar(select(AgentTurn.id).where(AgentTurn.conversation_id == conversation.id).limit(1))
     context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "FOLLOW_UP").order_by(Question.created_at.desc()))
-    classified = classify_intent(payload.text, previous is not None)
-    skill = resolve_skill(classified.intent)
+    classified = classify_intent(payload.text, previous is not None or previous_turn is not None)
+    evidence = retrieve_advisory_documents(db, payload.text, classified.intent, payload.license_type, student.region) if classified.intent in {"INDUSTRY_KNOWLEDGE", "LEARNING_PROCESS", "POLICY_REGULATION", "LICENSE_TIMELINE"} else None
+    if classified.intent == "MNEMONIC_HELP" and context_question:
+        explanation = context_question.answer.detail if context_question.answer else ""
+        mnemonic = mnemonic_for(context_question.resolved_text or context_question.raw_text, explanation)
+        if mnemonic:
+            evidence = [{"title": "刚才这道题的记忆口诀", "summary": mnemonic, "source_type": "reviewed_mnemonic"}]
+    skill = resolve_skill(classified.intent, payload.text, evidence)
     if skill.action == "NAVIGATE":
         db.commit()
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="NAVIGATE", destination=skill.destination, assistant_message="好的，已经为你打开对应的练习。", prompt_version=PROMPT_VERSION)
+        labels = {"START_PRACTICE": "想刷题的话，点下面就能开始。", "WRONG_QUESTIONS": "可以，点下面打开错题本。", "FAVORITES": "可以，点下面看收藏的题。", "MOCK_EXAM": "准备好了就点下面，再开始模拟考试。"}
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="SUGGEST_NAVIGATION", destination=skill.destination, assistant_message=labels.get(classified.intent, "点下面再继续。"), prompt_version=PROMPT_VERSION)
     if skill.action == "RESPOND":
+        message = skill.assistant_message or generate_conversation_reply(db, conversation, student, classified.intent, skill.spec.id, payload.text.strip(), evidence)
         db.commit()
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="RESPOND", assistant_message=skill.assistant_message, prompt_version=PROMPT_VERSION)
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="RESPOND", assistant_message=message, prompt_version=PROMPT_VERSION)
     resolved = resolve_follow_up(payload.text, context_question.raw_text if context_question else None) if classified.intent == "FOLLOW_UP" else payload.text.strip()
     question = Question(conversation_id=conversation.id, raw_text=payload.text.strip(), resolved_text=resolved, intent=classified.intent, prompt_version=PROMPT_VERSION)
     db.add(question); db.commit()

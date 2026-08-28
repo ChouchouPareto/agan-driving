@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+.next/
+test-results/
+playwright-report/
+tests/
+e2e/
+.vefaas/
+*.tsbuildinfo

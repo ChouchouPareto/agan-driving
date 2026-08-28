@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api import router
 from app.staff_api import router as staff_router
@@ -25,6 +26,14 @@ app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins.spl
 app.include_router(router)
 app.include_router(staff_router)
 app.include_router(knowledge_router)
+
+
+@app.get("/api/v1/health")
+def health():
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    settings = get_settings()
+    return {"status": "ok", "service": "agan-driving-api", "environment": settings.app_env, "model_connected": not settings.mock_ai}
 
 
 @app.exception_handler(RequestValidationError)

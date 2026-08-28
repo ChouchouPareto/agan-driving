@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Check, HelpCircle, School } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, MessageCircleMore, School } from "lucide-react";
 import Link from "next/link";
 import { SpecularButton } from "@/components/ui/specular-button";
 import type { Answer, Ticket } from "@/lib/schemas/domain";
@@ -12,6 +12,19 @@ type AnswerSection = "reason" | "mistake" | "source";
 export function AnswerCard({ answer, ticket, busy, resolved, onFeedback, onTicket }: Props) {
   const [section, setSection] = useState<AnswerSection>("reason");
   const tabs: { id: AnswerSection; label: string }[] = [{ id: "reason", label: "原因" }, { id: "mistake", label: "易错" }, { id: "source", label: "来源" }];
+
+  if (answer.evidence.length === 0) return <>
+    <article className="card answer noEvidenceAnswer">
+      <span className="noEvidenceEyebrow">还差一点信息</span>
+      <div className="direct">我还没对上这道题</div>
+      <p>可能是题干或选项不完整。你可以把完整题目发来，我再帮你认真核对；也可以请校长看看。</p>
+      <div className="noEvidenceActions">
+        <button type="button" className="noEvidencePrimary" onClick={() => document.querySelector<HTMLTextAreaElement>("#ask-composer textarea")?.focus()}><MessageCircleMore aria-hidden="true" size={18}/>补充题目</button>
+        <button type="button" className="noEvidenceSecondary" disabled={busy || Boolean(ticket)} onClick={onTicket}><School aria-hidden="true" size={18}/>{ticket ? "已提交校长" : "请校长核查"}</button>
+      </div>
+    </article>
+    {ticket && <section className="card ticket" aria-live="polite"><div className="ticketTitle">{ticket.label}</div><p>{ticket.sla}</p><Link className="textLink" href={`/tickets/${ticket.id}`}>查看处理详情 →</Link></section>}
+  </>;
 
   return <>
     <article className="card answer">

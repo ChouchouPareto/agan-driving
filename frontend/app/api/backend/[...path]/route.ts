@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE = "student_session";
 const upstream = process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000/api/v1";
+const secureCookie = process.env.SESSION_COOKIE_SECURE === undefined
+  ? process.env.NODE_ENV === "production"
+  : process.env.SESSION_COOKIE_SECURE === "true";
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
@@ -36,7 +39,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     const payload = await response.json();
     const next = NextResponse.json({ student_id: payload.student_id, anonymous_id: payload.anonymous_id }, { status: response.status, headers: responseHeaders });
     if (payload.access_token) {
-      next.cookies.set(COOKIE, payload.access_token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 8 });
+      next.cookies.set(COOKIE, payload.access_token, { httpOnly: true, sameSite: "lax", secure: secureCookie, path: "/", maxAge: 60 * 60 * 8 });
     }
     return next;
   }

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE = "staff_session";
 const upstream = process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000/api/v1";
+const secureCookie = process.env.SESSION_COOKIE_SECURE === undefined
+  ? process.env.NODE_ENV === "production"
+  : process.env.SESSION_COOKIE_SECURE === "true";
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   const route = path.join("/");
@@ -14,7 +17,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   if (route === "staff/auth/invitations/verify" && response.ok) {
     const payload = await response.json();
     const next = NextResponse.json({ staff_id: payload.staff_id, display_name: payload.display_name, role: payload.role });
-    next.cookies.set(COOKIE, payload.access_token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 8 });
+    next.cookies.set(COOKIE, payload.access_token, { httpOnly: true, sameSite: "lax", secure: secureCookie, path: "/", maxAge: 60 * 60 * 8 });
     return next;
   }
   return new NextResponse(response.body, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json" } });
