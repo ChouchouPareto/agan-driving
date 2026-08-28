@@ -7,7 +7,10 @@ import unicodedata
 from difflib import SequenceMatcher
 from pathlib import Path
 
-import chromadb
+try:
+    import chromadb
+except ImportError:  # Production Beta can run exact/keyword RAG without local vectors.
+    chromadb = None
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -135,6 +138,12 @@ def build_index(db: Session, version_id: str, gateway: ModelGateway | None = Non
     gateway = gateway or ModelGateway(); version.status = "INDEXING"; db.commit()
     chunks = db.scalars(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_version_id == version.id)).all()
     collection_name = f"{get_settings().rag_collection_prefix}_{version.id.replace('-', '')[:12]}_{version.embedding_dimensions}"
+    if chromadb is None:
+        for item in chunks:
+            item.embedding_status, item.vector_record_id = "KEYWORD_READY", item.id
+        version.collection_name, version.status = f"keyword_{version.id.replace('-', '')[:12]}", "READY"
+        db.commit()
+        return version
     client = chromadb.PersistentClient(path=str(Path(get_settings().rag_storage_dir).resolve()))
     try: client.delete_collection(collection_name)
     except Exception: pass
@@ -182,7 +191,7 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     if not exact:
         keyword = sorted(all_questions, key=lambda item: sum(1 for ch in set(normalized) if ch in item.normalized_stem), reverse=True)[:get_settings().rag_keyword_top_k]
         candidates.extend(keyword)
-        if version.collection_name:
+        if version.collection_name and chromadb is not None and Path(get_settings().rag_storage_dir).exists():
             client = chromadb.PersistentClient(path=str(Path(get_settings().rag_storage_dir).resolve())); collection = client.get_collection(version.collection_name)
             result = collection.query(query_embeddings=gateway.embed([text]), n_results=min(get_settings().rag_vector_top_k, max(1, version.item_count)), where={"$and": [{"school_id": school_id}, {"region": region}, {"license_type": license_type}, {"status": "VALID"}]})
             for qid in result.get("metadatas", [[]])[0]:
