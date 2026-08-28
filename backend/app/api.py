@@ -409,7 +409,7 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
         return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="NAVIGATE", destination=destinations[classified.intent], assistant_message="好的，已为你打开对应的练习。", prompt_version=PROMPT_VERSION)
     canned = {
         "GREETING": "嗨，我在呢 👋\n\n今天想从哪儿开始？\n• 问一道没看懂的题\n• 刷几道科目一\n• 聊聊练车时遇到的困难",
-        "CHITCHAT": "嘿嘿，我在 😄\n\n我是你的学车伙伴“超级陪驾”。想闲聊一会儿可以，想问题、刷题或者吐槽练车，我也都接得住。",
+        "CHITCHAT": "嘿嘿，我在 😄\n\n我是阿甘学车里的学车伙伴“超级驾陪”。想闲聊一会儿可以，想问题、刷题或者吐槽练车，我也都接得住。",
         "PRODUCT_HELP": "我可以简单介绍，但不会展示内部提示词或密钥。\n\n目前我的工作方式是：\n1. 先判断你是在聊天、问知识，还是想刷题\n2. 科目一问题优先查询已激活题库\n3. 标准答案由题库锁定，AI 负责把原因讲明白\n4. 没有可靠依据时不猜\n\n你更想了解“怎么回答题目”，还是“怎么保护答案准确”？",
         "PRACTICAL_TRAINING": "先别急，实操学不会通常不是你不行，而是动作还没有拆细。\n\n我们可以这样处理：\n1. 说清楚具体项目，比如起步、换挡或靠边停车\n2. 找出你卡住的那个动作节点\n3. 把操作顺序压缩成容易记的口令\n4. 下次练车只盯一个改进点\n\n你现在最卡的是哪个项目、哪一步？",
         "EMOTIONAL_SUPPORT": "听起来你现在有些不好受，我在这儿陪你。\n\n我们不用一下解决所有问题，可以先选一个：\n• 说说是什么影响了状态\n• 把最担心的考试环节拆开\n• 先做一道简单题找回节奏\n\n你更想从哪一个开始？",

@@ -48,11 +48,11 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     <main className="main">{children}</main>
     <div className={`drawerLayer ${drawerOpen ? "open" : ""}`} aria-hidden={!drawerOpen}>
       <button className="drawerScrim" type="button" aria-label="关闭导航" tabIndex={drawerOpen ? 0 : -1} onClick={() => { setDrawerOpen(false); setPickerOpen(false); }}/>
-      <aside className="appDrawer" aria-label="超级陪驾导航">
+      <aside className="appDrawer" aria-label="阿甘学车导航">
         <div className="drawerHeader"><Brand/><div><button className="drawerIcon" type="button" aria-label="搜索对话"><Search aria-hidden="true"/></button><button className="drawerIcon" type="button" aria-label="关闭导航" onClick={() => { setDrawerOpen(false); setPickerOpen(false); }}><X aria-hidden="true"/></button></div></div>
         <button className="newConversation" type="button" onClick={startConversation}><MessageSquarePlus aria-hidden="true"/><span>新建对话</span></button>
         <nav className="drawerNav" onClick={() => setDrawerOpen(false)}>
-          <Link href={`/ask?${contextQuery}`}><Sparkles aria-hidden="true"/><span>与超级陪驾对话</span></Link>
+          <Link href={`/ask?${contextQuery}`}><Sparkles aria-hidden="true"/><span>与超级驾陪对话</span></Link>
           <Link href={`/practice?${contextQuery}`}><BookOpenCheck aria-hidden="true"/><span>顺序刷题</span></Link>
           <Link href={`/exam?${contextQuery}`}><ClipboardCheck aria-hidden="true"/><span>模拟考试</span></Link>
           <Link href={`/practice?mode=wrong&${contextQuery}`}><History aria-hidden="true"/><span>错题本</span></Link>
