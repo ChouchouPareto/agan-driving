@@ -423,6 +423,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .specularButton--blue { --specular-bg: var(--primary); --specular-fg: #fff; border-color: var(--primary); }
 .specularButton--ink { --specular-bg: var(--text); --specular-fg: #fff; border-color: var(--text); }
 .answerActions .specularButton { flex: 1 1 148px; }
+.answerCarousel { margin-top: 16px; border-top: 1px solid var(--border); }
+.answerCarouselTabs { padding: 12px 0 8px; display: flex; align-items: center; gap: 7px; }
+.answerCarouselTabs button { min-width: 58px; min-height: 34px; padding: 6px 13px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary); font-size: 13px; font-weight: 700; }
+.answerCarouselTabs button:hover { background: var(--soft-surface); color: var(--text); }
+.answerCarouselTabs button.active { background: var(--text); color: white; }
+.answerCarouselViewport { overflow: hidden; border-radius: 14px; background: #fafbfc; }
+.answerCarouselTrack { display: flex; align-items: stretch; transition: transform 300ms cubic-bezier(.22,.72,.22,1); }
+.answerSlide { width: 100%; min-width: 100%; min-height: 118px; max-height: 210px; padding: 15px 16px; overflow-y: auto; color: var(--text); }
+.answerSlide > p { margin: 0; line-height: 1.72; }
+.sourceSlide { display: grid; align-content: start; gap: 8px; }
+.sourceSlide .evidence { margin: 0; background: white; }
+.sourceSlide .evidence > span { margin-left: 6px; color: var(--secondary); font-size: 11px; }
+.sourceSlide .evidence p { margin: 5px 0 0; }
+.answerActions { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(88px, .72fr) minmax(88px, .72fr); }
+.answerActions .specularButton { width: 100%; min-width: 0; }
+.answerActions .resolvedAction { min-height: 50px; }
+.answerActions .minorAction { min-height: 42px; align-self: center; padding: 8px 10px; font-size: 12px; }
 
 /* BubbleMenu-inspired pill navigation. */
 .topbarIcon { border: 1px solid transparent; border-radius: 50%; }
@@ -526,7 +543,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .examResult .actions { justify-content: center; }
 
 @media (max-width: 600px) {
-  .answerActions .specularButton { min-height: 46px; padding-inline: 10px; }
+  .chatStream .answer { padding-bottom: 14px; }
+  .chatStream .answer .direct { margin-top: 0; }
+  .answerCarouselTabs { padding-top: 10px; }
+  .answerSlide { min-height: 104px; max-height: 170px; padding: 13px 14px; }
+  .answerActions { grid-template-columns: minmax(150px, 2fr) 46px 46px !important; gap: 7px !important; }
+  .answerActions .specularButton { min-height: 44px; padding-inline: 9px; }
+  .answerActions .minorAction { width: 46px; padding: 0; }
+  .minorActionText { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); }
   .practiceHero { align-items: center; }
   .practiceHero p { max-width: 230px; }
   .practiceCompactBar p { max-width: 55%; text-align: right; }
