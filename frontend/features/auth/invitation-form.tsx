@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 
 export function InvitationForm() {
-  const router = useRouter(); const [code, setCode] = useState("INVITE_CODE_REMOVED"); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
+  const router = useRouter(); const [code, setCode] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
   useEffect(() => {
     localStorage.removeItem("access_token");
     if (sessionStorage.getItem("super-driving-session-expired")) window.setTimeout(() => setNotice("登录已过期，请重新进入。你刚才输入的内容已保留。"), 0);
