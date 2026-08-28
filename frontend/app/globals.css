@@ -487,10 +487,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .favoriteButton.active { color: var(--primary); background: var(--primary-soft); }
 .practiceCard h2 { margin: 18px 0 22px; font-size: clamp(20px, 3vw, 26px); }
 .practiceOption { border-radius: 15px; }
-.practiceOption.correct { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
+.practiceOption.correct { border-color: #9fd3b7; background: #f0faf4; color: #17643d; }
 .practiceOption.wrong { border-color: #e8aeb5; background: #fff5f6; color: #962b38; }
 .practiceResult { border: 1px solid #cfe0ff; border-radius: 16px; background: var(--primary-soft); color: var(--text); }
-.correctResult { background: var(--primary-soft); color: var(--text); }
+.correctResult { border-color: #b7ddc8; background: #eff9f3; color: #155f39; }
 .wrongResult { border-color: #f0c2c7; background: #fff3f4; color: #8f2834; }
 .specularLink { width: fit-content; margin-top: 12px; --specular-bg: white; --specular-fg: var(--primary); }
 .practiceActions .primary { background: var(--primary); }
