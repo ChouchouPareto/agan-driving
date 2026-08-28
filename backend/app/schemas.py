@@ -43,6 +43,7 @@ class LearningContextPatch(BaseModel):
 class AgentMessageResult(BaseModel):
     conversation_id: str
     intent: str
+    skill_id: str
     action: Literal["ANSWER", "NAVIGATE", "RESPOND"]
     question_id: str | None = None
     destination: str | None = None

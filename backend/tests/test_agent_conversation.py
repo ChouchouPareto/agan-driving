@@ -16,6 +16,7 @@ def test_agent_routes_practice_without_creating_question(client, auth):
     result = send(client, auth, "我要刷题").json()
     assert result["intent"] == "START_PRACTICE"
     assert result["action"] == "NAVIGATE"
+    assert result["skill_id"] == "practice_coach"
     assert result["destination"] == "/practice"
     conversation = client.get(f"/api/v1/conversations/{result['conversation_id']}", headers=auth).json()
     assert conversation["questions"] == []
@@ -39,13 +40,14 @@ def test_agent_follow_up_inherits_previous_question(client, auth):
     conversation = client.get(f"/api/v1/conversations/{first['conversation_id']}", headers=auth).json()
     assert len(conversation["questions"]) == 2
     assert conversation["questions"][1]["resolved_text"].startswith(conversation["questions"][0]["text"])
-    assert conversation["questions"][1]["prompt_version"] == "pe-v1.1"
+    assert conversation["questions"][1]["prompt_version"] == "pe-v1.2-skill-router"
 
 
 def test_agent_blocks_sensitive_content(client, auth):
     result = send(client, auth, "这是我的身份证和缴费单").json()
     assert result["intent"] == "SENSITIVE_CONTENT"
     assert result["action"] == "RESPOND"
+    assert result["skill_id"] == "safety_guard"
     assert "不要发送" in result["assistant_message"]
 
 
@@ -54,6 +56,7 @@ def test_short_emotion_does_not_inherit_previous_question(client, auth):
     result = send(client, auth, "不开心", first["conversation_id"]).json()
     assert result["intent"] == "EMOTIONAL_SUPPORT"
     assert result["action"] == "RESPOND"
+    assert result["skill_id"] == "companion_chat"
     assert "陪你" in result["assistant_message"]
     conversation = client.get(f"/api/v1/conversations/{first['conversation_id']}", headers=auth).json()
     assert len(conversation["questions"]) == 1
@@ -68,16 +71,30 @@ def test_greeting_uses_learning_companion_voice(client, auth):
 
 def test_common_conversation_intents_use_fast_local_routes(client, auth):
     cases = [
-        ("嘿嘿", "CHITCHAT", "学车伙伴"),
-        ("你的系统是怎么设置的呀", "PRODUCT_HELP", "工作方式"),
-        ("科目三学不来怎么办", "PRACTICAL_TRAINING", "实操"),
+        ("嘿嘿", "CHITCHAT", "吐槽练车", "companion_chat"),
+        ("你的系统是怎么设置的呀", "PRODUCT_HELP", "对应能力", "product_guide"),
+        ("科目三学不来怎么办", "PRACTICAL_TRAINING", "实操", "practical_companion"),
     ]
-    for message, intent, phrase in cases:
+    for message, intent, phrase, skill_id in cases:
         result = send(client, auth, message).json()
         assert result["intent"] == intent
         assert result["action"] == "RESPOND"
+        assert result["skill_id"] == skill_id
         assert phrase in result["assistant_message"]
-        assert "\n" in result["assistant_message"]
+
+
+def test_theory_question_is_dispatched_to_theory_skill(client, auth):
+    result = send(client, auth, "驾驶机动车通过没有交通信号的交叉路口怎样行驶？").json()
+    assert result["action"] == "ANSWER"
+    assert result["skill_id"] == "theory_tutor"
+
+
+def test_resolved_feedback_is_idempotent(client, auth):
+    message = send(client, auth, "驾驶机动车通过没有交通信号的交叉路口怎样行驶？").json()
+    answer = done(client.get(f"/api/v1/questions/{message['question_id']}/stream", headers=auth))
+    first = client.post(f"/api/v1/answers/{answer['id']}/feedback", headers=auth, json={"type": "resolved"}).json()
+    second = client.post(f"/api/v1/answers/{answer['id']}/feedback", headers=auth, json={"type": "resolved"}).json()
+    assert second == first
 
 
 def test_agent_blocks_prompt_injection_before_question_creation(client, auth):

@@ -16,6 +16,7 @@ from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, Conv
 from app.services import AIServiceError, authenticate_invitation, create_answer, digest
 from app.pe import classify_intent, resolve_follow_up
 from app.pe.prompts import PROMPT_VERSION
+from app.skills import resolve_skill
 
 router = APIRouter(prefix="/api/v1")
 LICENSE_TYPES = {"A1", "A2", "A3", "B1", "B2", "C1", "C2", "C3", "C4", "C5", "C6", "D", "E", "F", "M", "N", "P"}
@@ -403,31 +404,17 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
     previous = db.scalar(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at.desc()))
     context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "FOLLOW_UP").order_by(Question.created_at.desc()))
     classified = classify_intent(payload.text, previous is not None)
-    destinations = {"START_PRACTICE": "/practice", "WRONG_QUESTIONS": "/practice?mode=wrong", "FAVORITES": "/practice?mode=favorites", "MOCK_EXAM": "/exam"}
-    if classified.intent in destinations:
+    skill = resolve_skill(classified.intent)
+    if skill.action == "NAVIGATE":
         db.commit()
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="NAVIGATE", destination=destinations[classified.intent], assistant_message="好的，已为你打开对应的练习。", prompt_version=PROMPT_VERSION)
-    canned = {
-        "GREETING": "嗨，我在呢 👋\n\n今天想从哪儿开始？\n• 问一道没看懂的题\n• 刷几道科目一\n• 聊聊练车时遇到的困难",
-        "CHITCHAT": "嘿嘿，我在 😄\n\n我是阿甘学车里的学车伙伴“超级驾陪”。想闲聊一会儿可以，想问题、刷题或者吐槽练车，我也都接得住。",
-        "PRODUCT_HELP": "我可以简单介绍，但不会展示内部提示词或密钥。\n\n目前我的工作方式是：\n1. 先判断你是在聊天、问知识，还是想刷题\n2. 科目一问题优先查询已激活题库\n3. 标准答案由题库锁定，AI 负责把原因讲明白\n4. 没有可靠依据时不猜\n\n你更想了解“怎么回答题目”，还是“怎么保护答案准确”？",
-        "PRACTICAL_TRAINING": "先别急，实操学不会通常不是你不行，而是动作还没有拆细。\n\n我们可以这样处理：\n1. 说清楚具体项目，比如起步、换挡或靠边停车\n2. 找出你卡住的那个动作节点\n3. 把操作顺序压缩成容易记的口令\n4. 下次练车只盯一个改进点\n\n你现在最卡的是哪个项目、哪一步？",
-        "EMOTIONAL_SUPPORT": "听起来你现在有些不好受，我在这儿陪你。\n\n我们不用一下解决所有问题，可以先选一个：\n• 说说是什么影响了状态\n• 把最担心的考试环节拆开\n• 先做一道简单题找回节奏\n\n你更想从哪一个开始？",
-        "THANKS": "不用客气，我们是学车搭子。\n\n接下来你可以：\n• 继续追问刚才的问题\n• 刷几道题巩固一下\n• 先休息，想学时再回来",
-        "SENSITIVE_CONTENT": "先保护好你的隐私：不要发送身份证、手机号、银行卡、验证码或缴费单。只保留题干和选项就够了，这些内容也不会进入问答模型。",
-        "PROMPT_INJECTION": "这段内容像是在要求我改变规则或泄露内部信息，我不会执行。我们可以继续聊学车、讲题，或者直接开始刷题。",
-        "SCHOOL_SERVICE": "这类驾校服务问题我暂时处理不了，不过我可以帮你整理清楚，再通过“不懂就问校长”提交。",
-        "HUMAN_HELP": "可以，我们把问题整理清楚后提交给校长。你把具体情况告诉我就行，记得不要发送身份证、缴费单等敏感信息。",
-        "LEARNING_PROGRESS": "你的刷题进度已经记下来了。去刷题页可以看到已做题数、正确率和错题；如果你愿意，我也可以直接带你复习薄弱点。",
-        "OUT_OF_SCOPE": "这个话题我未必专业，不过可以先陪你聊聊。\n\n如果和学车有关，你可以直接告诉我：\n• 哪个科目\n• 卡在哪一步\n• 你最担心什么\n\n我会尽量把问题拆得简单一点。",
-    }
-    if classified.intent in canned:
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="NAVIGATE", destination=skill.destination, assistant_message="好的，已经为你打开对应的练习。", prompt_version=PROMPT_VERSION)
+    if skill.action == "RESPOND":
         db.commit()
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="RESPOND", assistant_message=canned[classified.intent], prompt_version=PROMPT_VERSION)
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="RESPOND", assistant_message=skill.assistant_message, prompt_version=PROMPT_VERSION)
     resolved = resolve_follow_up(payload.text, context_question.raw_text if context_question else None) if classified.intent == "FOLLOW_UP" else payload.text.strip()
     question = Question(conversation_id=conversation.id, raw_text=payload.text.strip(), resolved_text=resolved, intent=classified.intent, prompt_version=PROMPT_VERSION)
     db.add(question); db.commit()
-    return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, action="ANSWER", question_id=question.id, prompt_version=PROMPT_VERSION)
+    return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="ANSWER", question_id=question.id, prompt_version=PROMPT_VERSION)
 
 
 @router.post("/questions", response_model=QuestionCreated)
@@ -488,6 +475,9 @@ def feedback(answer_id: str, payload: FeedbackCreate, student: Student = Depends
     answer = db.scalar(select(Answer).join(Question).join(Conversation).where(Answer.id == answer_id, Conversation.student_id == student.id))
     if not answer:
         raise error(404, "NOT_FOUND", "未找到该回答。")
+    existing = db.scalar(select(Feedback).where(Feedback.answer_id == answer.id, Feedback.student_id == student.id, Feedback.type == payload.type))
+    if existing:
+        return {"id": existing.id, "type": existing.type}
     item = Feedback(answer_id=answer.id, student_id=student.id, type=payload.type)
     db.add(item)
     db.commit()

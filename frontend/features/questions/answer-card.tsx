@@ -6,10 +6,10 @@ import Link from "next/link";
 import { SpecularButton } from "@/components/ui/specular-button";
 import type { Answer, Ticket } from "@/lib/schemas/domain";
 
-type Props = { answer: Answer; ticket: Ticket | null; busy: boolean; onFeedback: (type: "resolved" | "not_understood" | "disputed") => void; onTicket: () => void };
+type Props = { answer: Answer; ticket: Ticket | null; busy: boolean; resolved: boolean; onFeedback: (type: "resolved" | "not_understood" | "disputed") => void; onTicket: () => void };
 type AnswerSection = "reason" | "mistake" | "source";
 
-export function AnswerCard({ answer, ticket, busy, onFeedback, onTicket }: Props) {
+export function AnswerCard({ answer, ticket, busy, resolved, onFeedback, onTicket }: Props) {
   const [section, setSection] = useState<AnswerSection>("reason");
   const tabs: { id: AnswerSection; label: string }[] = [{ id: "reason", label: "原因" }, { id: "mistake", label: "易错" }, { id: "source", label: "来源" }];
 
@@ -30,7 +30,7 @@ export function AnswerCard({ answer, ticket, busy, onFeedback, onTicket }: Props
         </div>
       </section>
       <div className="actions answerActions">
-        <SpecularButton className="resolvedAction" tone="blue" disabled={busy} onClick={() => onFeedback("resolved")}><Check aria-hidden="true" size={18}/>已解决</SpecularButton>
+        <SpecularButton className="resolvedAction" tone="blue" disabled={busy || resolved} aria-pressed={resolved} onClick={() => onFeedback("resolved")}><Check aria-hidden="true" size={18}/>{resolved ? "已记录" : "已解决"}</SpecularButton>
         <SpecularButton className="minorAction" aria-label="还不懂" title="还不懂" disabled={busy} onClick={() => onFeedback("not_understood")}><HelpCircle aria-hidden="true" size={18}/><span className="minorActionText">还不懂</span></SpecularButton>
         <SpecularButton className="minorAction" aria-label="答案有问题" title="答案有问题" disabled={busy} onClick={() => onFeedback("disputed")}><AlertTriangle aria-hidden="true" size={18}/><span className="minorActionText">有问题</span></SpecularButton>
         {answer.risk_codes.length > 0 && <SpecularButton tone="ink" disabled={busy} onClick={onTicket}><School aria-hidden="true" size={18}/>提交给校长</SpecularButton>}

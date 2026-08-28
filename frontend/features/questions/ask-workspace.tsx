@@ -32,6 +32,7 @@ export function AskWorkspace() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [knowledge, setKnowledge] = useState<KnowledgeStatus | null>(null);
+  const [resolvedAnswerIds, setResolvedAnswerIds] = useState<Set<string>>(() => new Set());
   const controller = useRef<AbortController | null>(null);
   const chatStream = useRef<HTMLElement | null>(null);
   const isBusy = status.startsWith("正在");
@@ -161,10 +162,12 @@ export function AskWorkspace() {
 
   async function feedback(question: QuestionDetail, type: "resolved" | "not_understood" | "disputed") {
     if (!question.answer || isBusy) return;
+    if (type === "resolved" && resolvedAnswerIds.has(question.answer.id)) return;
     setError("");
     try {
       await api.sendFeedback(question.answer.id, type);
       if (type === "resolved") {
+        setResolvedAnswerIds(ids => new Set(ids).add(question.answer!.id));
         setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: "我看懂了", assistant: "太好了，这次理解已记录。你可以继续追问，或说‘我要刷题’。", intent: "RESOLVED" }]);
       } else if (type === "not_understood") {
         setStatus("正在换一种方式解释…");
@@ -207,7 +210,7 @@ export function AskWorkspace() {
       {messages.map(question => <div className="conversationTurn" key={question.id}>
         <div className="userMessage"><p>{question.text}</p></div>
         {question.intent === "FOLLOW_UP" && <span className="intentBadge">已结合上一题理解</span>}
-        {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
+        {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} resolved={resolvedAnswerIds.has(question.answer.id)} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
       </div>)}
       {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级驾陪 · 学车伙伴</span><p>{item.assistant}</p></div></div></div>)}
       {pendingUser && <div className="conversationTurn pendingTurn"><div className="userMessage"><p>{pendingUser}</p></div></div>}
