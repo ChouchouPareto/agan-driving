@@ -1,0 +1,42 @@
+<svg viewBox="0 0 1200 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">阿甘学车最终产品蓝图</title>
+  <desc id="desc">从学员档案与目标出发，由超级驾陪识别需求，连接学习、陪伴、服务和校长人工协同，最终形成个性化学车闭环。</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/></marker>
+    <marker id="arrow-muted" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/></marker>
+    <marker id="arrow-alert" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fb7185"/></marker>
+    <style>
+      text{font-family:'JetBrains Mono','Noto Sans SC','PingFang SC',sans-serif}.title{fill:#f8fafc;font-size:24px;font-weight:700}.subtitle{fill:#94a3b8;font-size:12px}.node-title{fill:#f8fafc;font-size:14px;font-weight:700;text-anchor:middle}.node-sub{fill:#94a3b8;font-size:10px;text-anchor:middle}.lane{fill:#cbd5e1;font-size:11px;font-weight:600;letter-spacing:1px}
+    </style>
+  </defs>
+  <rect width="1200" height="920" fill="#0f172a"/><rect width="1200" height="920" fill="url(#grid)"/>
+  <text x="50" y="48" class="title">阿甘学车｜从答题工具到全程学车伙伴</text>
+  <text x="50" y="73" class="subtitle">一个懂学员、懂驾考、懂陪伴，并能与驾校真人服务协同的 AI 学车产品</text>
+
+  <rect x="45" y="105" width="1110" height="110" rx="14" fill="none" stroke="#60a5fa" stroke-width="1" stroke-dasharray="7,5"/><text x="63" y="129" class="lane">学员与目标</text>
+  <line x1="360" y1="161" x2="470" y2="161" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/><line x1="730" y1="161" x2="840" y2="161" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+  <g><rect x="90" y="137" width="270" height="56" rx="28" fill="#0f172a"/><rect x="90" y="137" width="270" height="56" rx="28" fill="rgba(59,130,246,0.3)" stroke="#60a5fa" stroke-width="1.5"/><text x="225" y="160" class="node-title">学员档案</text><text x="225" y="177" class="node-sub">准驾车型·当前科目·学习进度</text></g>
+  <g><rect x="470" y="137" width="260" height="56" rx="8" fill="#0f172a"/><rect x="470" y="137" width="260" height="56" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/><text x="600" y="160" class="node-title">学员当下需求</text><text x="600" y="177" class="node-sub">想学·看不懂·焦虑·办事·求助</text></g>
+  <g><rect x="840" y="137" width="270" height="56" rx="28" fill="#0f172a"/><rect x="840" y="137" width="270" height="56" rx="28" fill="rgba(59,130,246,0.3)" stroke="#60a5fa" stroke-width="1.5"/><text x="975" y="160" class="node-title">学车目标</text><text x="975" y="177" class="node-sub">看懂·练会·通过·安心拿证</text></g>
+  <line x1="600" y1="215" x2="600" y2="270" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="45" y="270" width="1110" height="340" rx="14" fill="none" stroke="#34d399" stroke-width="1" stroke-dasharray="7,5"/><text x="63" y="294" class="lane">超级驾陪 AGENT</text>
+  <g><rect x="455" y="305" width="290" height="64" rx="10" fill="#0f172a"/><rect x="455" y="305" width="290" height="64" rx="10" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="2"/><text x="600" y="331" class="node-title">意图识别与对话管理</text><text x="600" y="350" class="node-sub">先听懂学员在说什么，再选择最合适的帮助</text></g>
+  <line x1="600" y1="369" x2="600" y2="405" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/><line x1="190" y1="405" x2="1010" y2="405" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="190" y1="405" x2="190" y2="430" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-muted)"/><line x1="460" y1="405" x2="460" y2="430" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-muted)"/><line x1="740" y1="405" x2="740" y2="430" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-muted)"/><line x1="1010" y1="405" x2="1010" y2="430" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow-muted)"/>
+  <g><rect x="75" y="430" width="230" height="74" rx="8" fill="#0f172a"/><rect x="75" y="430" width="230" height="74" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/><text x="190" y="459" class="node-title">普通聊天与焦虑疏导</text><text x="190" y="479" class="node-sub">像学车伙伴一样聊、听和陪伴</text></g>
+  <g><rect x="345" y="430" width="230" height="74" rx="8" fill="#0f172a"/><rect x="345" y="430" width="230" height="74" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/><text x="460" y="459" class="node-title">刷题与学习辅导</text><text x="460" y="479" class="node-sub">题库·错题·口诀·模考·个性化计划</text></g>
+  <g><rect x="625" y="430" width="230" height="74" rx="8" fill="#0f172a"/><rect x="625" y="430" width="230" height="74" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/><text x="740" y="459" class="node-title">专业知识与实践建议</text><text x="740" y="479" class="node-sub">科一至科四·驾驶技巧·安全知识</text></g>
+  <g><rect x="895" y="430" width="230" height="74" rx="8" fill="#0f172a"/><rect x="895" y="430" width="230" height="74" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/><text x="1010" y="459" class="node-title">政策、流程与驾校服务</text><text x="1010" y="479" class="node-sub">学制·周期·报名·约考·拿证·咨询</text></g>
+  <line x1="190" y1="504" x2="190" y2="550" stroke="#64748b" stroke-width="1.5"/><line x1="460" y1="504" x2="460" y2="550" stroke="#64748b" stroke-width="1.5"/><line x1="740" y1="504" x2="740" y2="550" stroke="#64748b" stroke-width="1.5"/><line x1="1010" y1="504" x2="1010" y2="550" stroke="#64748b" stroke-width="1.5"/><line x1="190" y1="550" x2="1010" y2="550" stroke="#64748b" stroke-width="1.5"/><line x1="600" y1="550" x2="600" y2="575" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(600 579)"><polygon points="0,-29 58,0 0,29 -58,0" fill="#0f172a"/><polygon points="0,-29 58,0 0,29 -58,0" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/><text y="4" class="node-title" font-size="11">可靠回答？</text></g>
+  <line x1="600" y1="608" x2="600" y2="660" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/><text x="612" y="635" fill="#34d399" font-size="9">是</text><path d="M658 579 H960 V660" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrow-alert)"/><text x="790" y="570" fill="#fb7185" font-size="9">低置信度 / 特殊风险</text>
+
+  <rect x="45" y="660" width="1110" height="115" rx="14" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="7,5"/><text x="63" y="684" class="lane">知识、工具与人工协同</text>
+  <g><rect x="105" y="700" width="245" height="54" rx="8" fill="#0f172a"/><rect x="105" y="700" width="245" height="54" rx="8" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/><text x="228" y="723" class="node-title">RAG 权威知识库</text><text x="228" y="740" class="node-sub">题库·法规·政策·驾校资料·来源</text></g>
+  <g><rect x="478" y="700" width="245" height="54" rx="8" fill="#0f172a"/><rect x="478" y="700" width="245" height="54" rx="8" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/><text x="600" y="723" class="node-title">学员进度与评估工具</text><text x="600" y="740" class="node-sub">做题·掌握度·错因·焦虑·下一步</text></g>
+  <g><rect x="850" y="700" width="245" height="54" rx="8" fill="#0f172a"/><rect x="850" y="700" width="245" height="54" rx="8" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/><text x="973" y="723" class="node-title">不懂就问校长</text><text x="973" y="740" class="node-sub">特殊问题·人工处理·回复学员</text></g>
+  <path d="M350 727 H478" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-muted)"/><path d="M723 727 H850" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow-muted)"/><line x1="600" y1="754" x2="600" y2="814" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="175" y="814" width="850" height="70" rx="35" fill="#0f172a"/><rect x="175" y="814" width="850" height="70" rx="35" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="2"/><text x="600" y="842" class="node-title">个性化学车闭环</text><text x="600" y="862" class="node-sub">学得会·考得过·心里稳·服务顺，并为驾校带来口碑、续费与转介绍</text>
+</svg>

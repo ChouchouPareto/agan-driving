@@ -1,118 +1,54 @@
-# 阿甘学车｜AI 学车陪伴产品
+# 阿甘学车｜AI 学车伙伴
+
+## 我们最终要做成什么
+
+阿甘学车的最终目标，不是再做一个只会出题和对答案的刷题软件，而是成为学员从报名到拿证全过程中的 **AI 学车伙伴**。
+
+核心 AI 角色“**超级驾陪**”需要同时懂得：
+
+- **懂学员**：知道他学什么车型、到了哪个科目、卡在哪里，也能听懂焦虑和气馁。
+- **懂驾考**：能准确回答理论题、解释驾驶技巧、制定学习计划，并用题库、错题、口诀和模考帮助学员通过考试。
+- **懂服务**：能解释政策、学制、约考、拿证周期和驾校流程，不确定或高风险问题交给真人校长。
+- **会越用越懂你**：结合学员档案、学习进度、错因和反馈，持续调整建议，而不是每次从头开始。
+
+对学员，它是一个有陪伴价值且回答准确的学车 AI；对驾校，它是一套能够进入一线服务、连接学员档案和真人教练的智能服务能力。最终用更好的学习体验、更稳定的考试通过和更顺畅的服务，带来口碑、续费与转介绍。
+
+## 产品蓝图
+
+![阿甘学车最终产品蓝图](diagram/agan-driving-product-vision/agan-driving-product-vision.svg)
 
 ## 线上测试入口
 
 - [学员端｜体验阿甘学车](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/enter)
 - [校长端｜打开校长工作台](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/staff/enter)
 
-> 当前为邀请制测试版，请向项目管理员获取对应身份的邀请码。
+> 当前为邀请制测试版，请向项目管理员获取对应身份的邀请码。源码仓库保持私有，体验用户只能访问线上产品。
 
-当前实现“可信问答＋OCR可信输入纵向切片”：邀请码进入、文字/图片提问、OCR校正确认、标准题确定性回答、开放问题安全拒答/Dify适配、二次解释、学员反馈和“不懂就问校长”工单。
+## 当前版本：V2.0 Beta
 
-## 当前边界
+### 已经完成
 
-- 已实现：Web最小界面、FastAPI、SQLite、迁移、SSE、状态持久化、mock测试；
-- 已预留：Dify Workflow接入；
-- 已实现：安全单图上传、持久化OCR任务、qwen-vl-ocr适配、校正确认、刷新恢复；
-- 未实现：完整教练后台、提醒、看板、ERP/小程序；
-- 未完成：真实Dify/模型冒烟（当前没有配置凭证）；
-- 当前内置2道结构验证题，50道专业审核样本仍待内容准备。
+- 学员邀请制进入、对话式首页与移动端交互。
+- “超级驾陪”普通聊天、焦虑疏导、学车意图识别和口语化回复。
+- C1 科目一刷题、错题、收藏、模拟考试、答案解释与学车口诀框架。
+- 文字与图片提问、OCR 校正确认流程。
+- RAG 知识库基础链路，当前连接 1,388 条 C1 题库预览数据。
+- “不懂就问校长”工单、校长工作台、知识条目管理与评测页面。
+- 敏感信息、提示词注入与高风险问题的基础防护。
+- 学员端与校长端已部署到线上测试环境，数据持久化已接入 TOS。
 
-## 环境
+### 下一步重点
 
-- Python 3.11–3.12；当前由`uv`使用Python 3.12；
-- Node.js 22+；
-- npm；
-- Dify和模型Key只有真实冒烟时必需。
+- 用正式授权题库替换研究预览数据，补全法规、政策、学制、约考和拿证流程等权威知识。
+- 把学员档案、学习进度、错因和学习计划真正打通，形成长期记忆与个性化辅导。
+- 完成 C2 理论共用与其他准驾车型、科目二至科目四的知识和服务框架。
+- 建立回答准确性、陪伴体验、意图识别、RAG 命中和安全攻防的评测集。
+- 开展压力测试、并发测试、故障注入、日志监控、成本监控与正式题库切换验收。
 
-## 后端
+## 仓库与运行说明
 
-```bash
-cd backend
-uv sync --all-groups
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-API文档：`http://localhost:8000/docs`。
-
-测试环境压力冒烟（会创建匿名测试会话，请勿直接指向正式库）：
-
-```bash
-cd backend
-./.venv/bin/python scripts/load_smoke.py --base-url http://127.0.0.1:8000/api/v1 --requests 100 --concurrency 10
-```
-
-输出成功率、吞吐量、平均延迟以及 P50/P95/P99。正式测试应从 10 并发逐级升到目标并发，并同时观察 API 错误率、数据库写入和模型限流。
-
-## 前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-访问：`http://localhost:3000`。
-
-如果全局npm缓存存在权限问题，可以指定独立缓存，不需要sudo：
-
-```bash
-npm install --cache /private/tmp/driving-school-npm-cache
-```
-
-## 配置Dify
-
-复制根目录`.env.example`为`.env`，在本地填写：
-
-- `DIFY_BASE_URL`
-- `DIFY_API_KEY`
-- `DIFY_WORKFLOW_ID`
-- 实际可用的模型ID
-
-密钥只能由后端读取。不要把`.env`提交到Git，也不要在日志、截图或聊天中回显。
-
-Dify Workflow输出必须符合`AnswerPayload`：直接答案、简短原因、详细解释、易错点、依据、路由和风险编码。无可靠依据必须返回风险，不得强答。
-
-## 配置OCR
-
-后端从根目录`.env`读取`DASHSCOPE_API_KEY`、`DASHSCOPE_BASE_URL`、`OCR_MODEL_ID`和`OCR_STORAGE_DIR`。
-
-没有配置Key时使用明确标记的本地mock，不能据此宣称真实OCR验收完成。持久化Worker运行方式：
-
-    cd backend
-    uv run python -m app.workers.ocr_worker
-
-开发环境上传图片保存在私有目录，不经过Next.js静态目录；默认7天后由Worker清理。
-
-## 验证
-
-后端：
-
-```bash
-cd backend
-uv run pytest -q
-uv run alembic upgrade head
-```
-
-前端：
-
-```bash
-cd frontend
-npm run typecheck
-npm run lint
-npm run build
-npm audit --omit=dev
-```
-
-## 真实模型验收状态
-
-真实Dify/模型凭证未配置，因此以下验收保持待验：
-
-- 开放理论问题真实RAG；
-- 真实模型输出结构；
-- 真实延迟、Token和成本；
-- 错误Key、超时、限流和网络重试；
-- Reviewer模型一致性。
-
-mock和确定性题库测试通过不能替代这些真实冒烟结果。
+- 前端：Next.js + TypeScript。
+- 后端：FastAPI + SQLite（测试版）。
+- 模型：通过后端调用，API Key 不会下发到浏览器。
+- 部署：火山引擎 veFaaS + APIG，持久化备份使用 TOS。
+- 安全：不提交 `.env` 或任何真实密钥；邀请码不在公开体验页面展示。
