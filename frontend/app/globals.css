@@ -368,6 +368,72 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
   .mobileToolSheet a, .mobileToolSheet button { min-height: 110px; }
 }
 
+/* Media knowledge-card prototype: shared visual language for chat and practice. */
+.mediaDemoPage { display: grid; gap: 42px; padding-bottom: 48px; }
+.mediaDemoIntro { max-width: 700px; padding-top: 12px; }
+.mediaDemoIntro > span { color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .05em; }
+.mediaDemoIntro h1 { margin: 13px 0 12px; font-size: clamp(34px, 6vw, 54px); line-height: 1.12; letter-spacing: -.055em; }
+.mediaDemoIntro p { max-width: 620px; margin: 0; color: var(--secondary); font-size: 16px; line-height: 1.75; }
+.mediaDemoChat { display: grid; gap: 18px; }
+.mediaDemoUser { width: fit-content; max-width: 78%; justify-self: end; padding: 13px 17px; border-radius: 20px 20px 5px 20px; background: var(--text); color: white; line-height: 1.6; }
+.mediaAnswer { padding: clamp(18px, 4vw, 30px); border: 1px solid #d9e5e1; border-radius: 26px; background: white; box-shadow: 0 16px 50px rgba(23,32,29,.06); }
+.mediaAnswerAuthor { display: flex; align-items: center; gap: 10px; }
+.mediaAnswerAuthor > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; background: var(--primary); color: white; font-weight: 850; }
+.mediaAnswerAuthor > div { display: grid; gap: 1px; }
+.mediaAnswerAuthor strong { font-size: 14px; }
+.mediaAnswerAuthor small { color: var(--secondary); font-size: 11px; }
+.mediaAnswer h2 { margin: 22px 0 8px; font-size: clamp(22px, 4vw, 30px); line-height: 1.35; letter-spacing: -.03em; }
+.mediaAnswer > p { margin: 0; color: #4f5754; line-height: 1.75; }
+.mediaModeTabs { width: fit-content; margin: 22px 0 10px; padding: 4px; display: flex; gap: 3px; border-radius: 999px; background: var(--soft-surface); }
+.mediaModeTabs button { min-height: 40px; padding: 8px 15px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary); font-size: 13px; font-weight: 750; }
+.mediaModeTabs button.active { background: white; color: var(--text); box-shadow: 0 3px 12px rgba(23,32,29,.08); }
+.mediaVisual { position: relative; overflow: hidden; border-radius: 22px; background: #edf2ef; aspect-ratio: 12 / 7; }
+.intersectionIllustration { width: 100%; height: 100%; display: block; }
+.demoVehicle { transition: transform 420ms cubic-bezier(.22,.72,.22,1), opacity 220ms ease; opacity: .62; }
+.demoVehicle.active { opacity: 1; }
+.mediaPlay { position: absolute; inset: 50% auto auto 50%; width: 64px; height: 64px; display: grid; place-items: center; transform: translate(-50%,-50%); border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background: rgba(25,27,26,.88); color: white; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+.mediaPlay:hover { background: var(--primary); }
+.mediaPlay svg { width: 23px; margin-left: 3px; }
+.mediaVisualMeta { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 6px; }
+.mediaVisualMeta span { min-height: 30px; padding: 5px 8px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; background: rgba(255,255,255,.9); color: #48504d; font-size: 10px; font-weight: 700; backdrop-filter: blur(8px); }
+.mediaVisualMeta svg { width: 13px; height: 13px; }
+.mediaTakeaway { margin-top: 12px; padding: 13px 15px; display: flex; align-items: center; gap: 11px; border-radius: 16px; background: var(--primary-soft); color: var(--primary); }
+.mediaTakeaway > svg { width: 21px; flex: 0 0 auto; }
+.mediaTakeaway div { display: grid; gap: 2px; }
+.mediaTakeaway small { font-size: 10px; font-weight: 750; }
+.mediaTakeaway strong { color: var(--text); font-size: 14px; }
+.mediaPracticeLink { width: 100%; min-height: 50px; margin-top: 12px; padding: 0 15px; display: flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 16px; background: white; color: var(--text); font-weight: 750; }
+.mediaPracticeLink:hover { border-color: #9bc2b8; background: #fbfdfc; }
+.mediaPracticeLink svg { width: 19px; }
+.mediaPracticeLink svg:last-child { margin-left: auto; }
+.wrongReviewDemo { padding-top: 4px; }
+.wrongReviewHeading { margin-bottom: 14px; display: flex; align-items: end; justify-content: space-between; }
+.wrongReviewHeading span { color: var(--primary); font-size: 11px; font-weight: 800; }
+.wrongReviewHeading h2 { margin: 5px 0 0; font-size: 24px; }
+.wrongReviewHeading > strong { color: var(--secondary); font-size: 12px; }
+.wrongReviewCard { display: grid; grid-template-columns: minmax(210px,.82fr) minmax(260px,1.18fr); gap: 20px; padding: 18px; border: 1px solid var(--border); border-radius: 24px; background: white; }
+.wrongReviewThumb { overflow: hidden; align-self: stretch; min-height: 190px; border-radius: 17px; }
+.wrongReviewThumb svg { width: 100%; height: 100%; object-fit: cover; }
+.wrongReviewCopy { align-self: center; }
+.wrongReviewCopy > span { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); font-size: 11px; font-weight: 800; }
+.wrongReviewCopy > span svg { width: 15px; }
+.wrongReviewCopy h3 { margin: 11px 0 7px; font-size: 19px; line-height: 1.55; }
+.wrongReviewCopy p { margin: 0; color: var(--secondary); line-height: 1.65; }
+.wrongReviewCard > button { grid-column: 2; width: fit-content; min-height: 44px; padding: 9px 14px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 999px; background: white; color: var(--text); font-weight: 700; }
+.wrongReviewCard > button:hover { border-color: #9bc2b8; background: var(--primary-soft); }
+.wrongReviewCard > button svg { width: 17px; }
+@media (prefers-reduced-motion: reduce) { .demoVehicle { transition: none; } }
+@media (max-width: 600px) {
+  .mediaDemoPage { gap: 32px; }
+  .mediaDemoIntro h1 { font-size: 36px; }
+  .mediaAnswer { border-radius: 22px; }
+  .mediaVisual { border-radius: 18px; aspect-ratio: 1.2 / 1; }
+  .mediaVisualMeta { right: 8px; bottom: 8px; }
+  .wrongReviewCard { grid-template-columns: 1fr; gap: 14px; padding: 14px; }
+  .wrongReviewThumb { min-height: 220px; }
+  .wrongReviewCard > button { grid-column: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drawerScrim, .appDrawer { transition: none; }
 }
