@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, Layers3, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, Layers3, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
 import { answerSchema, type QuestionDetail } from "@/lib/schemas/domain";
 import { consumeSse } from "@/lib/stream/sse";
 import { ApiError } from "@/lib/api/errors";
@@ -19,10 +19,19 @@ const learnerVoices = [
   { label: "我该买梅赛德斯还是凯迪拉克？", prompt: "我该买梅赛德斯还是凯迪拉克？" },
 ];
 const cardPracticeScenarios = [
-  "无信号路口让行", "转弯让直行", "环岛进出顺序", "人行横道礼让",
-  "超车与会车", "高速汇入与驶离", "安全跟车距离", "雨雾天气灯光",
-  "爆胎应急处置", "车辆故障警示", "交通标志辨析", "事故现场处置",
-];
+  { title: "无信号路口让行", summary: "先看标志标线；都没有时，减速观察并让右方道路来车先行。", tip: "无灯无标线，右方来车先。" },
+  { title: "转弯让直行", summary: "通过交叉路口时，转弯车辆不能抢行，要先让直行车辆通过。", tip: "转弯先等等，直行先通过。" },
+  { title: "环岛进出顺序", summary: "进入环岛前减速观察，按标志标线通行，驶出时提前开启右转向灯。", tip: "进岛先观察，出岛早示意。" },
+  { title: "人行横道礼让", summary: "接近人行横道要减速；遇行人正在通过，应停车让行。", tip: "见线先减速，见人要停车。" },
+  { title: "超车与会车", summary: "先确认视线、距离和道路条件，禁止超车的路段不要冒险操作。", tip: "看不清、没把握，就不超。" },
+  { title: "高速汇入与驶离", summary: "汇入前在加速车道调整车速，驶离前提前变道并进入减速车道。", tip: "汇入先提速，驶离后减速。" },
+  { title: "安全跟车距离", summary: "车速越快、路面越滑，跟车距离就要留得越大。", tip: "速度高、路面滑，距离多留点。" },
+  { title: "雨雾天气灯光", summary: "低能见度时正确使用灯光并降低车速，避免随意使用远光灯。", tip: "先降速、再亮灯，别用远光添乱。" },
+  { title: "爆胎应急处置", summary: "握稳方向盘，缓慢减速，不要急打方向或猛踩制动。", tip: "握稳、松油、缓减速。" },
+  { title: "车辆故障警示", summary: "先确保人员安全，再按道路类型设置警告标志并报警求助。", tip: "人先安全，再做警示。" },
+  { title: "交通标志辨析", summary: "先看形状和颜色判断类别，再结合图案理解具体含义。", tip: "先分类，再认图。" },
+  { title: "事故现场处置", summary: "先保护人员和现场安全，再报警、救助并依法处理。", tip: "先救人、再警示、后处理。" },
+] as const;
 
 export function AskWorkspace() {
   const router = useRouter();
@@ -39,6 +48,7 @@ export function AskWorkspace() {
   const [text, setText] = useState(params.get("text") ?? "");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [cardPracticeOpen, setCardPracticeOpen] = useState(false);
+  const [selectedCardScenario, setSelectedCardScenario] = useState<(typeof cardPracticeScenarios)[number] | null>(null);
   const [pendingUser, setPendingUser] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -251,10 +261,17 @@ export function AskWorkspace() {
     </section>
     <section id="ask-composer" className="chatComposer">
       {cardPracticeOpen && <section className="cardPracticePicker" aria-label="常见场景卡片">
-        <div className="cardPracticePickerHead"><div><span>卡片刷题</span><strong>选一个场景，马上开始</strong></div><button type="button" aria-label="关闭场景卡片" onClick={() => setCardPracticeOpen(false)}><X aria-hidden="true"/></button></div>
-        <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario} onClick={() => selectCardScenario(scenario)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario}</strong><ArrowRight aria-hidden="true"/></button>)}</div>
+        <div className="cardPracticePickerHead"><div><span>卡片刷题</span><strong>{selectedCardScenario ? "场景知识卡" : "选一个场景，马上开始"}</strong></div><button type="button" aria-label="关闭场景卡片" onClick={() => { setCardPracticeOpen(false); setSelectedCardScenario(null); }}><X aria-hidden="true"/></button></div>
+        {selectedCardScenario ? <article className="cardPracticeDetail" aria-live="polite">
+          <button className="cardPracticeBack" type="button" onClick={() => setSelectedCardScenario(null)}><ArrowLeft aria-hidden="true"/>全部场景</button>
+          <span>高频场景卡 · 预览</span>
+          <h2>{selectedCardScenario.title}</h2>
+          <p>{selectedCardScenario.summary}</p>
+          <div><small>一句记住</small><strong>{selectedCardScenario.tip}</strong></div>
+          <button className="cardPracticeAsk" type="button" onClick={() => selectCardScenario(selectedCardScenario.title)}>让超级驾陪讲解<ArrowRight aria-hidden="true"/></button>
+        </article> : <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario.title} onClick={() => setSelectedCardScenario(scenario)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.title}</strong><ArrowRight aria-hidden="true"/></button>)}</div>}
       </section>}
-      <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><button type="button" className={cardPracticeOpen ? "active" : ""} aria-expanded={cardPracticeOpen} onClick={() => { setToolsOpen(false); setCardPracticeOpen(value => !value); }}><Layers3 aria-hidden="true"/>卡片刷题</button><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
+      <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><button type="button" className={cardPracticeOpen ? "active" : ""} aria-expanded={cardPracticeOpen} onClick={() => { setToolsOpen(false); setSelectedCardScenario(null); setCardPracticeOpen(value => !value); }}><Layers3 aria-hidden="true"/>卡片刷题</button><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
       <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级驾陪发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={300}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/300</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
       {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><button type="button" onClick={() => { setToolsOpen(false); setCardPracticeOpen(true); }}><span><Layers3 aria-hidden="true"/></span><strong>卡片刷题</strong><small>按场景看图理解</small></button><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button></div>}
       <p className="aiDisclaimer">内容由 AI 生成，科目一结论以当前题库依据为准</p>
