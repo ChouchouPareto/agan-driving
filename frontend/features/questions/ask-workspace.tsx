@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, Layers3, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
 import { answerSchema, type QuestionDetail } from "@/lib/schemas/domain";
 import { consumeSse } from "@/lib/stream/sse";
 import { ApiError } from "@/lib/api/errors";
@@ -17,6 +17,11 @@ const learnerVoices = [
   { label: "我的驾驶证怎么还没有拿出来？", prompt: "我的驾驶证怎么还没有拿出来？" },
   { label: "科目一又挂了怎么办？", prompt: "科目一又挂了怎么办？" },
   { label: "我该买梅赛德斯还是凯迪拉克？", prompt: "我该买梅赛德斯还是凯迪拉克？" },
+];
+const cardPracticeScenarios = [
+  "无信号路口让行", "转弯让直行", "环岛进出顺序", "人行横道礼让",
+  "超车与会车", "高速汇入与驶离", "安全跟车距离", "雨雾天气灯光",
+  "爆胎应急处置", "车辆故障警示", "交通标志辨析", "事故现场处置",
 ];
 
 export function AskWorkspace() {
@@ -33,6 +38,7 @@ export function AskWorkspace() {
   const [localExchanges, setLocalExchanges] = useState<LocalExchange[]>([]);
   const [text, setText] = useState(params.get("text") ?? "");
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [cardPracticeOpen, setCardPracticeOpen] = useState(false);
   const [pendingUser, setPendingUser] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -208,7 +214,14 @@ export function AskWorkspace() {
 
   function openImagePicker() {
     setToolsOpen(false);
+    setCardPracticeOpen(false);
     window.setTimeout(() => document.querySelector<HTMLInputElement>(".ocrPanel input[type='file']")?.click(), 0);
+  }
+
+  function selectCardScenario(scenario: string) {
+    setText(`用场景卡带我学习“${scenario}”`);
+    setCardPracticeOpen(false);
+    window.setTimeout(() => document.querySelector<HTMLTextAreaElement>("#question")?.focus(), 0);
   }
 
   async function useOCRQuestion(questionId: string) {
@@ -237,9 +250,13 @@ export function AskWorkspace() {
       {error && <div className="chatError" role="alert">{error}</div>}
     </section>
     <section id="ask-composer" className="chatComposer">
-      <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
+      {cardPracticeOpen && <section className="cardPracticePicker" aria-label="常见场景卡片">
+        <div className="cardPracticePickerHead"><div><span>卡片刷题</span><strong>选一个场景，马上开始</strong></div><button type="button" aria-label="关闭场景卡片" onClick={() => setCardPracticeOpen(false)}><X aria-hidden="true"/></button></div>
+        <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario} onClick={() => selectCardScenario(scenario)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario}</strong><ArrowRight aria-hidden="true"/></button>)}</div>
+      </section>}
+      <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><button type="button" className={cardPracticeOpen ? "active" : ""} aria-expanded={cardPracticeOpen} onClick={() => { setToolsOpen(false); setCardPracticeOpen(value => !value); }}><Layers3 aria-hidden="true"/>卡片刷题</button><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
       <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级驾陪发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={300}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/300</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
-      {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button><button type="button" disabled aria-disabled="true"><span><Sparkles aria-hidden="true"/></span><strong>问校长</strong><small>功能暂未开放</small></button></div>}
+      {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><button type="button" onClick={() => { setToolsOpen(false); setCardPracticeOpen(true); }}><span><Layers3 aria-hidden="true"/></span><strong>卡片刷题</strong><small>按场景看图理解</small></button><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button></div>}
       <p className="aiDisclaimer">内容由 AI 生成，科目一结论以当前题库依据为准</p>
     </section>
   </div>;

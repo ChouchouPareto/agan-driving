@@ -312,6 +312,21 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
 .quickTools a, .quickTools button { min-height: 42px; flex: 0 0 auto; padding: 8px 13px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dedee2; border-radius: 13px; background: rgba(255,255,255,.96); color: #34343a; text-decoration: none; font-size: 13px; font-weight: 600; }
 .quickTools svg { width: 17px; height: 17px; }
 .quickTools a:hover, .quickTools button:hover { background: var(--soft-surface); }
+.quickTools button.active { border-color: #9bc2b8; background: var(--primary-soft); color: var(--primary); }
+.cardPracticePicker { margin: 0 0 10px; padding: 14px; border: 1px solid #c8ddd7; border-radius: 22px; background: rgba(255,255,255,.98); box-shadow: 0 16px 42px rgba(23,32,29,.12); }
+.cardPracticePickerHead { margin-bottom: 11px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cardPracticePickerHead > div { display: grid; gap: 2px; }
+.cardPracticePickerHead span { color: var(--primary); font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.cardPracticePickerHead strong { font-size: 14px; }
+.cardPracticePickerHead > button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--soft-surface); color: var(--text); }
+.cardPracticePickerHead > button:hover { background: var(--primary-soft); color: var(--primary); }
+.cardPracticePickerHead svg { width: 18px; }
+.cardPracticeList { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; }
+.cardPracticeList button { min-width: 0; min-height: 52px; padding: 9px 10px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 14px; background: #fbfcfb; color: var(--text); text-align: left; }
+.cardPracticeList button:hover { border-color: #a9d0c5; background: var(--primary-soft); }
+.cardPracticeList button > span { color: #8a928f; font-size: 9px; font-weight: 800; }
+.cardPracticeList button > strong { font-size: 12px; line-height: 1.4; }
+.cardPracticeList button > svg { width: 15px; color: var(--primary); }
 .chatInputBox { padding: 12px 13px 10px; border-color: #dedee3; border-radius: 25px; box-shadow: 0 10px 34px rgba(23,23,27,.1); }
 .chatInputBox:focus-within { border-color: #bcb9fc; box-shadow: 0 0 0 3px rgba(98,92,246,.09), 0 10px 34px rgba(23,23,27,.1); }
 .chatInputBox > textarea { min-height: 52px; max-height: 140px; padding: 5px 6px 8px; font-size: 16px; }
@@ -362,6 +377,9 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
   .chatStream .answer .actions { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .chatComposer { margin: 0 -8px; padding-inline: 8px; }
   .quickTools { margin-right: -8px; padding-right: 8px; }
+  .cardPracticePicker { padding: 12px; border-radius: 20px; }
+  .cardPracticeList { grid-template-columns: repeat(2, minmax(0,1fr)); max-height: 230px; overflow-y: auto; overscroll-behavior: contain; }
+  .cardPracticeList button { min-height: 54px; }
   .chatInputBox { border-radius: 23px; }
   .characterCount { display: none; }
   .mobileToolSheet { grid-template-columns: repeat(2, minmax(0,1fr)); max-height: min(390px, 44vh); overflow-y: auto; }
