@@ -325,6 +325,9 @@ class KnowledgeChunk(Base):
     content_hash: Mapped[str] = mapped_column(String, index=True)
     embedding_status: Mapped[str] = mapped_column(String, default="PENDING")
     vector_record_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Store the production vector beside the chunk so veFaaS/SQLite deployments
+    # do not silently fall back to keyword-only retrieval when Chroma is absent.
+    embedding: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)
 
 
 class KnowledgeValidationIssue(Base):

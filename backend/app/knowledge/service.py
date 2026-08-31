@@ -23,6 +23,7 @@ from app.models import (
 )
 
 NORMALIZER_VERSION = "1"
+_VECTOR_INDEX_CACHE: dict[str, list[tuple[str, list[float]]]] = {}
 
 
 def normalize(text: str) -> str:
@@ -119,10 +120,42 @@ class ModelGateway:
         return embeddings
 
     def rerank(self, query: str, documents: list[str]) -> list[int]:
-        if not self.settings.dashscope_api_key: return list(range(len(documents)))
-        response = httpx.post("https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank", headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"}, json={"model": self.settings.rerank_model_id, "input": {"query": query, "documents": documents}, "parameters": {"return_documents": False, "top_n": min(len(documents), self.settings.rag_rerank_top_k)}}, timeout=self.settings.rag_model_timeout_seconds)
-        response.raise_for_status(); payload = response.json(); results = payload.get("results") or payload.get("output", {}).get("results", [])
-        return [item["index"] for item in results]
+        if not documents or not self.settings.dashscope_api_key:
+            return list(range(len(documents)))
+        model = self.settings.rerank_model_id
+        if model == "qwen3-rerank":
+            url = f"{self.settings.rerank_base_url.rstrip('/')}/reranks"
+            body = {
+                "model": model,
+                "query": query,
+                "documents": documents,
+                "top_n": min(len(documents), self.settings.rag_rerank_top_k),
+                "instruct": self.settings.rerank_instruct,
+            }
+        else:
+            url = f"{self.settings.rerank_base_url.rstrip('/').removesuffix('/compatible-api/v1')}/api/v1/services/rerank/text-rerank/text-rerank"
+            body = {
+                "model": model,
+                "input": {"query": query, "documents": documents},
+                "parameters": {"return_documents": False, "top_n": min(len(documents), self.settings.rag_rerank_top_k)},
+            }
+        last_error: Exception | None = None
+        for attempt in range(self.settings.rag_max_retries + 1):
+            try:
+                response = httpx.post(url, headers={"Authorization": f"Bearer {self.settings.dashscope_api_key}"}, json=body, timeout=self.settings.rag_model_timeout_seconds)
+                response.raise_for_status()
+                payload = response.json()
+                results = payload.get("results") or payload.get("output", {}).get("results", [])
+                order = [int(item["index"]) for item in results]
+                if not order:
+                    raise ValueError("rerank returned no results")
+                return order
+            except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+                last_error = exc
+                if attempt < self.settings.rag_max_retries:
+                    time.sleep(.4 * (attempt + 1))
+        assert last_error is not None
+        raise last_error
 
     def _fake_embedding(self, text: str) -> list[float]:
         dims = self.settings.embedding_dimensions; values = [0.0] * dims
@@ -135,24 +168,71 @@ class ModelGateway:
 def build_index(db: Session, version_id: str, gateway: ModelGateway | None = None) -> KnowledgeVersion:
     version = db.get(KnowledgeVersion, version_id)
     if not version or version.status not in ("READY", "INDEXING", "ACTIVE"): raise ValueError("knowledge version is not indexable")
-    gateway = gateway or ModelGateway(); version.status = "INDEXING"; db.commit()
+    gateway = gateway or ModelGateway()
+    previous_status = "ACTIVE" if version.status == "ACTIVE" else "READY"
+    version.status = "INDEXING"; db.commit()
     chunks = db.scalars(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_version_id == version.id)).all()
     collection_name = f"{get_settings().rag_collection_prefix}_{version.id.replace('-', '')[:12]}_{version.embedding_dimensions}"
+    try:
+        embeddings = gateway.embed([item.content for item in chunks])
+    except Exception:
+        version.status = previous_status
+        db.commit()
+        raise
+    if len(embeddings) != len(chunks):
+        version.status = previous_status
+        db.commit()
+        raise ValueError("embedding count does not match knowledge chunks")
+    for item, vector in zip(chunks, embeddings, strict=True):
+        item.embedding = vector
+        item.embedding_status, item.vector_record_id = "READY", item.id
+    _VECTOR_INDEX_CACHE[version.id] = [(item.question_id, vector) for item, vector in zip(chunks, embeddings, strict=True)]
     if chromadb is None:
-        for item in chunks:
-            item.embedding_status, item.vector_record_id = "KEYWORD_READY", item.id
-        version.collection_name, version.status = f"keyword_{version.id.replace('-', '')[:12]}", "READY"
+        version.collection_name, version.status = f"database_{version.id.replace('-', '')[:12]}", previous_status
         db.commit()
         return version
-    client = chromadb.PersistentClient(path=str(Path(get_settings().rag_storage_dir).resolve()))
-    try: client.delete_collection(collection_name)
-    except Exception: pass
-    collection = client.create_collection(collection_name, metadata={"hnsw:space": "cosine"})
-    embeddings = gateway.embed([item.content for item in chunks])
-    questions = {q.id: q for q in db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id)).all()}
-    collection.add(ids=[item.id for item in chunks], embeddings=embeddings, documents=[item.content for item in chunks], metadatas=[{"school_id": version.school_id, "version_id": version.id, "region": questions[item.question_id].region, "license_type": questions[item.question_id].license_type, "status": questions[item.question_id].status, "question_id": item.question_id} for item in chunks])
-    for item in chunks: item.embedding_status, item.vector_record_id = "READY", item.id
-    version.collection_name, version.status = collection_name, "READY"; db.commit(); return version
+    try:
+        client = chromadb.PersistentClient(path=str(Path(get_settings().rag_storage_dir).resolve()))
+        try: client.delete_collection(collection_name)
+        except Exception: pass
+        collection = client.create_collection(collection_name, metadata={"hnsw:space": "cosine"})
+        questions = {q.id: q for q in db.scalars(select(StandardQuestion).where(StandardQuestion.knowledge_version_id == version.id)).all()}
+        collection.add(ids=[item.id for item in chunks], embeddings=embeddings, documents=[item.content for item in chunks], metadatas=[{"school_id": version.school_id, "version_id": version.id, "region": questions[item.question_id].region, "license_type": questions[item.question_id].license_type, "status": questions[item.question_id].status, "question_id": item.question_id} for item in chunks])
+        version.collection_name = collection_name
+    except Exception:
+        # The database vector index is authoritative for Beta. Chroma remains
+        # an optional accelerator and must not make a valid index unavailable.
+        version.collection_name = f"database_{version.id.replace('-', '')[:12]}"
+    version.status = previous_status
+    db.commit()
+    return version
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 0.0
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if not left_norm or not right_norm:
+        return 0.0
+    return sum(a * b for a, b in zip(left, right, strict=True)) / (left_norm * right_norm)
+
+
+def _keyword_score(query: str, candidate: str) -> float:
+    query_chars = set(query)
+    if not query_chars:
+        return 0.0
+    return sum(1 for char in query_chars if char in candidate) / len(query_chars)
+
+
+def _load_vector_index(db: Session, version_id: str) -> list[tuple[str, list[float]]]:
+    cached = _VECTOR_INDEX_CACHE.get(version_id)
+    if cached is not None:
+        return cached
+    chunks = db.scalars(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_version_id == version_id, KnowledgeChunk.embedding_status == "READY")).all()
+    index = [(chunk.question_id, chunk.embedding) for chunk in chunks if chunk.embedding]
+    _VECTOR_INDEX_CACHE[version_id] = index
+    return index
 
 
 def activate(db: Session, version_id: str, *, actor_id: str = "system", request_id: str | None = None, event_type: str = "ACTIVATE") -> KnowledgeVersion:
@@ -185,27 +265,38 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     exact = exact_full or (same_stem[0] if len(same_stem) == 1 else None)
     candidates = [exact] if exact else []
     match_type = "standard_exact" if exact else "standard_hybrid"
+    retrieval_error: str | None = None
+    retrieval_confidence: dict[str, float] = {}
     if len(same_stem) > 1 and not exact_full:
         db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type="ambiguous", candidate_ids=[item.id for item in same_stem], final_evidence_ids=[], error_code="AMBIGUOUS_QUESTION", latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
         return None
     if not exact:
-        keyword = sorted(all_questions, key=lambda item: sum(1 for ch in set(normalized) if ch in item.normalized_stem), reverse=True)[:get_settings().rag_keyword_top_k]
-        candidates.extend(keyword)
-        if version.collection_name and chromadb is not None and Path(get_settings().rag_storage_dir).exists():
-            client = chromadb.PersistentClient(path=str(Path(get_settings().rag_storage_dir).resolve())); collection = client.get_collection(version.collection_name)
-            result = collection.query(query_embeddings=gateway.embed([text]), n_results=min(get_settings().rag_vector_top_k, max(1, version.item_count)), where={"$and": [{"school_id": school_id}, {"region": region}, {"license_type": license_type}, {"status": "VALID"}]})
-            for qid in result.get("metadatas", [[]])[0]:
-                candidate = db.get(StandardQuestion, qid["question_id"])
-                if candidate and candidate not in candidates: candidates.append(candidate)
+        settings = get_settings()
+        keyword_scores = {item.id: _keyword_score(normalized, item.normalized_stem) for item in all_questions}
+        keyword = sorted(all_questions, key=lambda item: keyword_scores[item.id], reverse=True)[:settings.rag_keyword_top_k]
+        candidate_scores = {item.id: keyword_scores[item.id] * .35 for item in keyword}
+        query_vector = gateway.embed([text])[0]
+        vector_scores = {question_id: _cosine_similarity(query_vector, embedding) for question_id, embedding in _load_vector_index(db, version.id)}
+        vector_questions = sorted(all_questions, key=lambda item: vector_scores.get(item.id, 0.0), reverse=True)[:settings.rag_vector_top_k]
+        for item in vector_questions:
+            candidate_scores[item.id] = candidate_scores.get(item.id, 0.0) + vector_scores.get(item.id, 0.0) * .65
+            retrieval_confidence[item.id] = max(keyword_scores.get(item.id, 0.0), vector_scores.get(item.id, 0.0))
+        candidates = sorted({item.id: item for item in keyword + vector_questions}.values(), key=lambda item: candidate_scores.get(item.id, 0.0), reverse=True)[:30]
         if candidates:
-            order = gateway.rerank(text, [item.stem + "\n" + item.explanation for item in candidates[:30]])
-            candidates = [candidates[index] for index in order if index < len(candidates)][:get_settings().rag_rerank_top_k]
+            try:
+                order = gateway.rerank(text, [item.stem + "\n" + item.explanation for item in candidates])
+                candidates = [candidates[index] for index in order if 0 <= index < len(candidates)][:settings.rag_rerank_top_k]
+            except Exception:
+                # Hybrid scores remain a safe, deterministic fallback when the
+                # optional reranker is unavailable or rate limited.
+                retrieval_error = "RERANK_DEGRADED"
+                candidates = candidates[:settings.rag_rerank_top_k]
     selected = candidates[0] if candidates else None
     if selected and not exact:
         similarity = SequenceMatcher(None, normalized, selected.normalized_stem).ratio()
-        if similarity < .24:
+        if max(similarity, retrieval_confidence.get(selected.id, 0.0)) < .24:
             selected = None
-    error_code = None if selected else "NO_TRUSTED_EVIDENCE"
+    error_code = retrieval_error if selected else "NO_TRUSTED_EVIDENCE"
     db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type=match_type if selected else "none", candidate_ids=[item.id for item in candidates], final_evidence_ids=[selected.id] if selected else [], error_code=error_code, latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
     if not selected: return None
     option = next((item for item in selected.options if str(item.get("label", "")).upper() == selected.standard_answer.upper()), None)

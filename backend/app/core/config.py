@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     embedding_model_id: str = "text-embedding-v4"
     embedding_dimensions: int = 1024
     rerank_model_id: str = "qwen3-rerank"
+    rerank_base_url: str = "https://dashscope.aliyuncs.com/compatible-api/v1"
+    rerank_instruct: str = "Retrieve semantically similar driving-test questions and passages that answer the query."
     rag_vector_top_k: int = 20
     rag_keyword_top_k: int = 20
     rag_rerank_top_k: int = 5
