@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, Layers3, LoaderCircle, MessageCircleQuestion, Plus, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpenCheck, Camera, CheckCircle2, Database, Heart, History, ImageUp, Layers3, LoaderCircle, MessageCircleQuestion, Pause, Play, Plus, Send, Sparkles, VolumeX, X } from "lucide-react";
 import { answerSchema, type QuestionDetail } from "@/lib/schemas/domain";
 import { consumeSse } from "@/lib/stream/sse";
 import { ApiError } from "@/lib/api/errors";
@@ -33,6 +33,21 @@ const cardPracticeScenarios = [
   { title: "事故现场处置", summary: "先保护人员和现场安全，再报警、救助并依法处理。", tip: "先救人、再警示、后处理。" },
 ] as const;
 
+function IntersectionCardMotion({ playing }: { playing: boolean }) {
+  return <svg className={`cardSceneMotion ${playing ? "playing" : ""}`} viewBox="0 0 640 300" role="img" aria-labelledby="card-scene-title card-scene-desc">
+    <title id="card-scene-title">无信号路口动态演示</title>
+    <desc id="card-scene-desc">你的绿色车辆减速等待，右侧黑色车辆先通过路口。</desc>
+    <rect width="640" height="300" rx="22" fill="#dceae4"/>
+    <rect x="0" y="94" width="640" height="112" fill="#c9d0cd"/>
+    <rect x="264" y="0" width="112" height="300" fill="#c9d0cd"/>
+    <path d="M0 150h640M320 0v300" stroke="#fff" strokeWidth="4" strokeDasharray="16 16"/>
+    <g className="cardSceneCar cardSceneCarYou" transform="translate(287 232)"><rect width="66" height="40" rx="12" fill="#247a67"/><rect x="15" y="6" width="36" height="28" rx="7" fill="#bfe0d7"/></g>
+    <g className="cardSceneCar cardSceneCarRight" transform="translate(492 130)"><rect width="66" height="40" rx="12" fill="#171d1a"/><rect x="15" y="6" width="36" height="28" rx="7" fill="#d9dddb"/></g>
+    <g transform="translate(24 22)"><rect width="164" height="38" rx="19" fill="#fff"/><circle cx="20" cy="19" r="8" fill="#247a67"/><text x="37" y="24" fill="#17201d" fontSize="15" fontWeight="700">你的车：减速等待</text></g>
+    <g transform="translate(434 238)"><rect width="180" height="38" rx="19" fill="#fff"/><circle cx="20" cy="19" r="8" fill="#171d1a"/><text x="37" y="24" fill="#17201d" fontSize="15" fontWeight="700">右方来车：先通过</text></g>
+  </svg>;
+}
+
 export function AskWorkspace() {
   const router = useRouter();
   const params = useSearchParams();
@@ -49,6 +64,7 @@ export function AskWorkspace() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [cardPracticeOpen, setCardPracticeOpen] = useState(false);
   const [selectedCardScenario, setSelectedCardScenario] = useState<(typeof cardPracticeScenarios)[number] | null>(null);
+  const [cardVideoPlaying, setCardVideoPlaying] = useState(false);
   const [pendingUser, setPendingUser] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -263,13 +279,18 @@ export function AskWorkspace() {
       {cardPracticeOpen && <section className="cardPracticePicker" aria-label="常见场景卡片">
         <div className="cardPracticePickerHead"><div><span>卡片刷题</span><strong>{selectedCardScenario ? "场景知识卡" : "选一个场景，马上开始"}</strong></div><button type="button" aria-label="关闭场景卡片" onClick={() => { setCardPracticeOpen(false); setSelectedCardScenario(null); }}><X aria-hidden="true"/></button></div>
         {selectedCardScenario ? <article className="cardPracticeDetail" aria-live="polite">
-          <button className="cardPracticeBack" type="button" onClick={() => setSelectedCardScenario(null)}><ArrowLeft aria-hidden="true"/>全部场景</button>
+          <button className="cardPracticeBack" type="button" onClick={() => { setSelectedCardScenario(null); setCardVideoPlaying(false); }}><ArrowLeft aria-hidden="true"/>全部场景</button>
           <span>高频场景卡 · 预览</span>
           <h2>{selectedCardScenario.title}</h2>
+          {selectedCardScenario.title === "无信号路口让行" && <div className="cardVideoDemo">
+            <IntersectionCardMotion playing={cardVideoPlaying}/>
+            <button type="button" aria-label={cardVideoPlaying ? "暂停动态演示" : "播放动态演示"} aria-pressed={cardVideoPlaying} onClick={() => setCardVideoPlaying(value => !value)}>{cardVideoPlaying ? <Pause aria-hidden="true"/> : <Play aria-hidden="true" fill="currentColor"/>}</button>
+            <span><VolumeX aria-hidden="true"/>默认静音 · 15 秒演示</span>
+          </div>}
           <p>{selectedCardScenario.summary}</p>
           <div><small>一句记住</small><strong>{selectedCardScenario.tip}</strong></div>
           <button className="cardPracticeAsk" type="button" onClick={() => selectCardScenario(selectedCardScenario.title)}>让超级驾陪讲解<ArrowRight aria-hidden="true"/></button>
-        </article> : <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario.title} onClick={() => setSelectedCardScenario(scenario)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.title}</strong><ArrowRight aria-hidden="true"/></button>)}</div>}
+        </article> : <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario.title} onClick={() => { setSelectedCardScenario(scenario); setCardVideoPlaying(false); }}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.title}</strong><ArrowRight aria-hidden="true"/></button>)}</div>}
       </section>}
       <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><button type="button" className={cardPracticeOpen ? "active" : ""} aria-expanded={cardPracticeOpen} onClick={() => { setToolsOpen(false); setSelectedCardScenario(null); setCardPracticeOpen(value => !value); }}><Layers3 aria-hidden="true"/>卡片刷题</button><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
       <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级驾陪发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={300}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/300</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
