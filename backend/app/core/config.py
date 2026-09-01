@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "development"
     app_secret: str = "development-only-change-me"
-    staff_invitation_code: str = "INVITE_CODE_REMOVED"
+    learner_invitation_code: str = ""
+    staff_invitation_code: str = ""
     rag_enabled: bool = True
     rag_storage_dir: str = "../data/rag"
     rag_collection_prefix: str = "driving_school_subject1"

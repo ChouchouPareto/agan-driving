@@ -205,8 +205,9 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
 
 
 def seed(db: Session) -> None:
-    if not db.scalar(select(InvitationCode).limit(1)):
-        db.add(InvitationCode(code_hash=digest("INVITE_CODE_REMOVED")))
+    invitation_code = get_settings().learner_invitation_code.strip()
+    if invitation_code and not db.scalar(select(InvitationCode).limit(1)):
+        db.add(InvitationCode(code_hash=digest(invitation_code)))
         db.commit()
 
 

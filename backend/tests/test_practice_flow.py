@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from app.core.database import SessionLocal
@@ -7,7 +8,10 @@ FIXTURE = Path(__file__).parent / "fixtures/knowledge/sample_bank.json"
 
 
 def student_headers(client):
-    response = client.post("/api/v1/auth/invitations/verify", json={"code": "INVITE_CODE_REMOVED"})
+    response = client.post(
+        "/api/v1/auth/invitations/verify",
+        json={"code": os.environ["LEARNER_INVITATION_CODE"]},
+    )
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 

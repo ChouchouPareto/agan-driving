@@ -127,7 +127,7 @@ toml = [
 
 [[package]]
 name = "driving-school-assistant"
-version = "0.1.0"
+version = "2.1.0b1"
 source = { virtual = "." }
 dependencies = [
     { name = "alembic" },

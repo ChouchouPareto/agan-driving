@@ -13,3 +13,6 @@ frontend/.env.local
 frontend/*.tsbuildinfo
 frontend/test-results/
 frontend/playwright-report/
+**/AI Agent 产品上线部署手册.md
+**/AI产品Vibe Coding通用前端技术栈手册.md
+**/AI产品Vibe Coding通用技术栈手册.md

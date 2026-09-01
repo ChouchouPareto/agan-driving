@@ -52,7 +52,8 @@ def ticket_payload(db: Session, ticket: ReviewTicket, include_detail: bool = Tru
 
 @router.post("/staff/auth/invitations/verify")
 def staff_verify(payload: InvitationVerify, db: Session = Depends(get_db)):
-    if not secrets.compare_digest(payload.code.strip(), get_settings().staff_invitation_code):
+    configured_code = get_settings().staff_invitation_code.strip()
+    if not configured_code or not secrets.compare_digest(payload.code.strip(), configured_code):
         raise error(400, "INVALID_STAFF_INVITATION", "工作台邀请码无效。")
     token = secrets.token_urlsafe(32)
     staff = db.scalar(select(Staff).where(Staff.school_id == "pilot-school", Staff.role == "coach"))

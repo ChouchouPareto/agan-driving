@@ -22,7 +22,7 @@
 - [学员端｜体验阿甘学车](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/enter)
 - [校长端｜打开校长工作台](https://sjg752jmtbn2sckvrv72q.apigateway-cn-beijing.volceapi.com/staff/enter)
 
-> 当前为邀请制测试版，请向项目管理员获取对应身份的邀请码。本仓库已开放源代码，用于展示产品方案与当前实现；线上环境密钥、正式题库和学员数据不会进入仓库。
+> 当前为邀请制测试版，请向项目管理员获取对应身份的邀请码。本仓库已开放源代码，用于展示产品方案与当前实现；邀请码、线上环境密钥、正式题库和学员数据不会进入仓库。
 
 ## 当前版本：V2.1 Beta
 
@@ -62,3 +62,5 @@
 - 模型：通过后端调用，API Key 不会下发到浏览器。
 - 部署：火山引擎 veFaaS + APIG，持久化备份使用 TOS。
 - 安全：不提交 `.env` 或任何真实密钥；邀请码不在公开体验页面展示。
+
+本地和测试环境不提供默认邀请码。运行前必须通过未提交的私有环境变量配置 `LEARNER_INVITATION_CODE` 和 `STAFF_INVITATION_CODE`。

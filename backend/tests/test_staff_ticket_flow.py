@@ -1,3 +1,6 @@
+import os
+
+
 def create_ticket(client, auth):
     conversation = client.post("/api/v1/conversations", headers=auth, json={}).json()
     question = client.post("/api/v1/questions", headers=auth, json={"conversation_id": conversation["id"], "text": "这道题为什么这样选？"}).json()
@@ -5,7 +8,10 @@ def create_ticket(client, auth):
 
 
 def staff_auth(client):
-    response = client.post("/api/v1/staff/auth/invitations/verify", json={"code": "INVITE_CODE_REMOVED"})
+    response = client.post(
+        "/api/v1/staff/auth/invitations/verify",
+        json={"code": os.environ["STAFF_INVITATION_CODE"]},
+    )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 

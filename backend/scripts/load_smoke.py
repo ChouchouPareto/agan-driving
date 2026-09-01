@@ -34,7 +34,7 @@ async def run_one(client: httpx.AsyncClient, base_url: str, token: str, index: i
 async def main() -> int:
     parser = argparse.ArgumentParser(description="阿甘学车测试环境轻量压力冒烟")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000/api/v1")
-    parser.add_argument("--invite", default="INVITE_CODE_REMOVED")
+    parser.add_argument("--invite", required=True, help="通过私密渠道取得的测试邀请码")
     parser.add_argument("--requests", type=int, default=100)
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=10)
