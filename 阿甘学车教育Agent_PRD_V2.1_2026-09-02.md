@@ -138,11 +138,12 @@ AI 角色：超级驾陪。
 ## 8. 版本存档
 
 - GitHub 默认分支：`codex/v2.1-media-cards-public-20260901`
-- 媒体知识卡示例：commit `96b2c9d`
-- 卡片刷题入口：commit `1d0515d`
-- 卡片直接展示：commit `8b8965c`
-- 首个动态场景：commit `bf84963`
-- V2.1 公开版本说明：commit `65f8f83`
+- 媒体知识卡示例：commit `ed32af4`
+- 卡片刷题入口：commit `2e69518`
+- 卡片直接展示：commit `c89d181`
+- 首个动态场景：commit `769cf4b`
+- V2.1 公开版本说明：commit `8217ca3`
+- 开源安全加固：commit `57fbfbb`
 
 ---
 
