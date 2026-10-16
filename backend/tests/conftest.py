@@ -2,6 +2,8 @@ import os
 import secrets
 import tempfile
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["APP_ENV"] = "test"
+os.environ["APP_SECRET"] = "automated-test-secret-with-at-least-32-characters"
 os.environ["DASHSCOPE_API_KEY"] = ""
 os.environ["OCR_STORAGE_DIR"] = tempfile.mkdtemp(prefix="driving-school-ocr-tests-")
 os.environ["LEARNER_INVITATION_CODE"] = secrets.token_urlsafe(24)

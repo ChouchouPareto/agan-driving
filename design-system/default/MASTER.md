@@ -1,233 +1,61 @@
-# Design System Master File
+# 阿甘学车设计系统基线
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> 页面级规则存在时优先使用 `design-system/pages/`；本文件是全局视觉与交互底线。
 
----
+**品牌：** 阿甘学车<br>
+**AI 角色：** 超级驾陪<br>
+**体验关键词：** 可信、平静、口语化、低负担、像学车伙伴而不是后台系统<br>
+**更新时间：** 2026-10-17
 
-**Project:** 驾校科目一智能助教
-**Generated:** 2026-08-26 16:20:23
-**Category:** Educational App
-**Design Dials:** Variance 5/10 (Balanced / Modern) | Motion 4/10 (Standard) | Density 5/10 (Standard)
+## 颜色
 
----
+| 角色 | 色值 | 用途 |
+|---|---|---|
+| 品牌青绿 | `#247A67` | 主操作、当前状态、品牌图标 |
+| 深青绿 | `#1B6657` | 悬停与强调 |
+| 青绿浅底 | `#E9F4F0` | 轻提示、选中背景 |
+| 米白表面 | `#FFFEFA` | 卡片和输入区 |
+| 页面背景 | `#F5F7F5` | 全局背景 |
+| 近黑正文 | `#17201D` | 标题和正文 |
+| 次级文字 | `#626C68` | 说明与元信息 |
+| 边框 | `#DFE6E2` | 分隔和控件描边 |
+| 正确 | `#168A50` | 正确答案与成功反馈 |
+| 错误 | `#C43D4B` | 错误答案；背景使用淡红 |
 
-## Global Rules
+不新增无语义的品牌色。蓝色仅可用于浏览器默认链接兼容，不作为产品主色。
 
-### Color Palette
+## 字体与层级
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#4F46E5` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#818CF8` | `--color-secondary` |
-| On Secondary | `#0F172A` | `--color-on-secondary` |
-| Accent/CTA | `#EA580C` | `--color-accent` |
-| On Accent/CTA | `#000000` | `--color-on-accent` |
-| Background | `#EEF2FF` | `--color-background` |
-| Foreground | `#1E1B4B` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#1E1B4B` | `--color-card-foreground` |
-| Muted | `#EBEEF8` | `--color-muted` |
-| Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#C7D2FE` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#4F46E5` | `--color-ring` |
+- 使用 `Inter, Noto Sans SC, PingFang SC, system-ui`，不依赖网络字体。
+- 正文字号不小于 16px；辅助信息不小于 12px。
+- 标题直接说明用户当前任务，避免后台术语和 404 式错误文案。
+- AI 回复优先短句、口语化；依据与专业细节按需展开。
 
-**Color Notes:** Playful indigo + energetic orange [Accent adjusted from #F97316]
+## 布局与响应式
 
-### Typography
+- 学员主内容最大宽度 720px；校长端最大宽度 1180px。
+- 以 375px 手机为最低验收宽度，不允许横向滚动。
+- 触控目标至少 44×44px；输入框、底部操作需尊重安全区域。
+- 加载中的图片或媒体必须预留尺寸，避免布局跳动。
 
-- **Heading Font:** Baloo 2
-- **Body Font:** Comic Neue
-- **Mood:** kids, education, playful, friendly, colorful, learning
-- **Google Fonts:** [Baloo 2 + Comic Neue](https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap)
+## 组件
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap');
-```
+- 主按钮使用品牌青绿，次按钮使用白底描边；同屏只保留一个明显主操作。
+- 圆角以 10–18px 为主，不使用夸张胶泥感或过重阴影。
+- 正确答案使用淡绿底与绿色状态；错误答案使用淡红底与红色状态。
+- 返回按钮使用简洁图标加短文字，并保留清晰的可访问名称。
+- 不可用按钮必须有原因，提交失败必须保留用户输入并提供重试。
 
-### Spacing Variables
+## 动效与可访问性
 
-*Density: 5/10 — Standard*
+- 动效用于说明状态变化，持续 160–300ms；不自动播放有声内容。
+- 遵守 `prefers-reduced-motion`。
+- 键盘焦点必须清晰；颜色不是状态的唯一表达方式。
+- 表单使用可见标签、即时反馈和明确错误定位。
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+## 文案原则
 
-### Shadow Depths
-
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
-
----
-
-## Component Specs
-
-### Buttons
-
-```css
-/* Primary Button */
-.btn-primary {
-  background: #EA580C;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #4F46E5;
-  border: 2px solid #4F46E5;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
-
-### Cards
-
-```css
-.card {
-  background: #EEF2FF;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
-
-### Inputs
-
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
-
-.input:focus {
-  border-color: #4F46E5;
-  outline: none;
-  box-shadow: 0 0 0 3px #4F46E520;
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
-
-**Style:** Claymorphism
-
-**Keywords:** Soft 3D, chunky, playful, toy-like, bubbly, thick borders (3-4px), double shadows, rounded (16-24px)
-
-**Best For:** Educational apps, children's apps, SaaS platforms, creative tools, fun-focused, onboarding, casual games
-
-**Key Effects:** Inner+outer shadows (subtle, no hard lines), soft press (200ms ease-out), fluffy elements, smooth transitions
-
-### Page Pattern
-
-**Pattern Name:** Feature-Rich Showcase
-
-- **Conversion Strategy:** Clear feature hierarchy. One key message per card. Strong CTA repetition.
-- **CTA Placement:** Hero (sticky) + After features + Bottom
-- **Section Order:** Hero (value prop) > Feature grid/cards (4-6) > Use cases or benefits > Social proof or logos > CTA
-
----
-
-## Motion
-
-**Stagger List** (Standard) — Trigger: load or scroll | Duration: 300-450ms | Easing: `back.out(1.4)`
-
-```js
-gsap.from('.grid-item', { opacity: 0, scale: 0.92, y: 16, duration: 0.4, stagger: { each: 0.06, from: 'start', grid: 'auto' }, ease: 'back.out(1.4)' });
-```
-
-**Framework notes:** grid: 'auto' lets GSAP infer rows/columns from a CSS grid layout for a natural wave stagger; Use matchMedia('(prefers-reduced-motion: reduce)') to skip non-essential motion and render the final state immediately
-
-- ✅ Combine with from: 'center' for a bento-grid layout to draw the eye inward first
-- ❌ Don't use back.out on dense data tables; the overshoot reads as sloppy on informational UI
-- ⚡ Group DOM writes; avoid interleaving layout reads (getBoundingClientRect) between staggered tweens
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Dark modes
-- ❌ Complex jargon
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- 面向学员说人话：例如“还差一点信息”，不用 `NEEDS_REVIEW`。
+- 不确定时说明缺少什么，不把普通咨询强行识别为题目。
+- 跳转刷题、提交校长等改变上下文的行为必须由用户确认。
+- 只有敏感信息、危险行为和提示词注入使用固定安全模板。

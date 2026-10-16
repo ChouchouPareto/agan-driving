@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.services import seed
 from app.database_backup import backup_database, restore_database_if_needed
+from app.rate_limit import limiter, request_identity
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -28,6 +29,24 @@ app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins.spl
 app.include_router(router)
 app.include_router(staff_router)
 app.include_router(knowledge_router)
+
+
+@app.middleware("http")
+async def protect_high_cost_routes(request: Request, call_next):
+    if get_settings().app_env.lower() == "test":
+        return await call_next(request)
+    limits = {
+        ("POST", "/api/v1/auth/invitations/verify"): (10, 600),
+        ("POST", "/api/v1/staff/auth/invitations/verify"): (10, 600),
+        ("POST", "/api/v1/agent/messages"): (30, 60),
+        ("POST", "/api/v1/assets/images"): (10, 60),
+    }
+    rule = limits.get((request.method, request.url.path))
+    if rule:
+        allowed, retry_after = limiter.allow(f"{request.url.path}:{request_identity(request)}", *rule)
+        if not allowed:
+            return JSONResponse(status_code=429, headers={"Retry-After": str(retry_after)}, content={"error": {"code": "RATE_LIMITED", "message": "操作太频繁，请稍后再试。"}})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -50,6 +69,18 @@ def health():
         "model_connected": not settings.mock_ai,
         "persistent_storage": "tos" if settings.tos_enabled else "local",
     }
+
+
+@app.get("/api/v1/health/readiness")
+def readiness():
+    settings = get_settings()
+    with SessionLocal() as db:
+        active_knowledge = db.scalar(text("SELECT COUNT(*) FROM knowledge_versions WHERE status = 'ACTIVE'")) or 0
+    issues = [*settings.production_issues]
+    if active_knowledge == 0:
+        issues.append("ACTIVE_KNOWLEDGE_MISSING")
+    payload = {"status": "ready" if not issues else "not_ready", "issues": issues, "active_knowledge_versions": active_knowledge}
+    return JSONResponse(status_code=200 if not issues else 503, content=payload)
 
 
 @app.exception_handler(RequestValidationError)

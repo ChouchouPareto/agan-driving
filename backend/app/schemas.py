@@ -120,7 +120,8 @@ class FavoritePatch(BaseModel):
 
 class MockExamAnswer(BaseModel):
     question_id: str
-    answer: str = Field(min_length=1, max_length=16)
+    # Empty means the timer expired before the learner answered this item.
+    answer: str = Field(min_length=0, max_length=16)
 
 
 class MockExamSubmit(BaseModel):

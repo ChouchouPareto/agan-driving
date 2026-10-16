@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 async function enterAsStudent(page: import("@playwright/test").Page) {
   await page.goto("/enter");
+  await page.getByLabel("邀请码").fill("E2E-LEARNER");
   await page.getByRole("button", { name: "进入服务" }).click();
   await expect(page).toHaveURL(/\/ask/);
 }
@@ -56,8 +57,9 @@ test("校长认领回复后由学员确认关闭", async ({ browser }) => {
   const studentPage = await student.newPage();
   await enterAsStudent(studentPage);
   await ask(studentPage, "驾驶机动车遇到宇宙飞船时应该让谁先行？");
-  await expect(studentPage.getByRole("button", { name: "答案有问题" })).toBeVisible();
-  await studentPage.getByRole("button", { name: "答案有问题" }).click();
+  const reviewButton = studentPage.getByRole("button", { name: /请校长核查|答案有问题/ });
+  await expect(reviewButton).toBeVisible();
+  await reviewButton.click();
   const detailLink = studentPage.getByRole("link", { name: /查看处理详情/ });
   await expect(detailLink).toBeVisible();
   const href = await detailLink.getAttribute("href");
@@ -66,6 +68,7 @@ test("校长认领回复后由学员确认关闭", async ({ browser }) => {
   const staff = await browser.newContext();
   const staffPage = await staff.newPage();
   await staffPage.goto("/staff/enter");
+  await staffPage.getByLabel("工作台邀请码").fill("E2E-STAFF");
   await staffPage.getByRole("button", { name: "进入校长工作台" }).click();
   await expect(staffPage).toHaveURL(/staff\/tickets$/);
   await staffPage.getByRole("link", { name: /查看并处理/ }).first().click();

@@ -14,7 +14,7 @@ from app.models import AgentTurn, Answer, Conversation, Feedback, KnowledgeSourc
 from app.ocr_services import process_ocr_task, store_asset
 from app.storage import get_object_storage
 from app.schemas import AgentMessageCreate, AgentMessageResult, AuthResult, ConversationCreate, FavoritePatch, FeedbackCreate, InvitationVerify, LearningContextPatch, MockExamSubmit, OCRConfirm, OCRFieldsPatch, OCRTaskCreate, PracticeAnswer, QuestionCreate, QuestionCreated, TicketCreate
-from app.services import AIServiceError, authenticate_invitation, create_answer, digest
+from app.services import AIServiceError, authenticate_invitation, create_answer, digest, session_token_is_valid
 from app.pe import classify_intent, resolve_follow_up
 from app.pe.prompts import PROMPT_VERSION
 from app.skills import generate_conversation_reply, resolve_skill
@@ -39,7 +39,10 @@ def error(status: int, code: str, message: str) -> HTTPException:
 def current_student(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> Student:
     if not authorization or not authorization.startswith("Bearer "):
         raise error(401, "UNAUTHORIZED", "请先使用邀请码进入。")
-    student = db.scalar(select(Student).where(Student.session_token_hash == digest(authorization[7:])))
+    token = authorization[7:]
+    if not session_token_is_valid(token):
+        raise error(401, "INVALID_SESSION", "登录状态已过期，请重新使用邀请码进入。")
+    student = db.scalar(select(Student).where(Student.session_token_hash == digest(token)))
     if not student:
         raise error(401, "INVALID_SESSION", "登录状态已失效，请重新使用邀请码进入。")
     return student
@@ -213,7 +216,7 @@ def submit_mock_exam(payload: MockExamSubmit, license_type: str = Query(default=
     for item in payload.answers:
         question = questions[item.question_id]
         valid_answers = {str(option.get("label", "")) for option in question.options}
-        if item.answer not in valid_answers: raise error(422, "INVALID_ANSWER", "试卷中包含无效答案。")
+        if item.answer and item.answer not in valid_answers: raise error(422, "INVALID_ANSWER", "试卷中包含无效答案。")
         correct = _record_practice_answer(db, student, version, question, item.answer)
         details.append({"question_id": question.id, "selected_answer": item.answer, "standard_answer": question.standard_answer, "correct": correct, "explanation": question.explanation})
     db.commit()
@@ -227,6 +230,20 @@ def create_conversation(_: ConversationCreate, student: Student = Depends(curren
     db.add(conversation)
     db.commit()
     return {"id": conversation.id, "status": conversation.status}
+
+
+@router.get("/conversations")
+def list_conversations(student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    conversations = db.scalars(select(Conversation).where(Conversation.student_id == student.id).order_by(Conversation.updated_at.desc()).limit(30)).all()
+    items = []
+    for conversation in conversations:
+        latest_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at.desc()))
+        latest_turn = db.scalar(select(AgentTurn).where(AgentTurn.conversation_id == conversation.id).order_by(AgentTurn.created_at.desc()))
+        if not latest_question and not latest_turn:
+            continue
+        preview = latest_question.raw_text if latest_question else latest_turn.user_text if latest_turn else "新对话"
+        items.append({"id": conversation.id, "title": preview[:28], "preview": preview[:80], "updated_at": conversation.updated_at})
+    return {"items": items}
 
 
 @router.post("/assets/images")
@@ -382,7 +399,7 @@ def _answer_payload(question: Question) -> dict | None:
 
 def _question_payload(db: Session, question: Question, student: Student) -> dict:
     review_ticket = db.scalar(select(ReviewTicket).where(ReviewTicket.question_id == question.id, ReviewTicket.student_id == student.id))
-    labels = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
+    labels = {"SUBMITTED": "已提交校长", "QUEUED": "等待校长处理", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
     ticket = None if not review_ticket else {"id": review_ticket.id, "status": review_ticket.status, "label": labels.get(review_ticket.status, "状态待确认"), "sla": "问题已进入队列，工作时间内预计2小时处理。"}
     answer = _answer_payload(question)
     if answer is not None and review_ticket and question.status == "NEEDS_REVIEW":
@@ -408,6 +425,7 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
     previous_turn = db.scalar(select(AgentTurn.id).where(AgentTurn.conversation_id == conversation.id).limit(1))
     context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "FOLLOW_UP").order_by(Question.created_at.desc()))
     classified = classify_intent(payload.text, previous is not None or previous_turn is not None)
+    conversation.updated_at = datetime.now(timezone.utc)
     evidence = retrieve_advisory_documents(db, payload.text, classified.intent, payload.license_type, student.region) if classified.intent in {"INDUSTRY_KNOWLEDGE", "LEARNING_PROCESS", "POLICY_REGULATION", "LICENSE_TIMELINE"} else None
     if classified.intent == "MNEMONIC_HELP" and context_question:
         explanation = context_question.answer.detail if context_question.answer else ""

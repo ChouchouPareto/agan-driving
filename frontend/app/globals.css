@@ -247,6 +247,14 @@ body { min-width: 320px; -webkit-font-smoothing: antialiased; }
 .drawerNav a { min-height: 56px; padding: 0 12px; display: flex; align-items: center; gap: 14px; border-radius: 14px; color: var(--text); text-decoration: none; font-size: 16px; font-weight: 600; }
 .drawerNav a:hover { background: #f5f5f6; }
 .drawerNav svg { width: 22px; color: #313139; }
+.conversationHistory { max-height: min(330px, 38dvh); margin: -14px 0 18px; padding: 14px; overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; background: #f8faf9; }
+.conversationHistory > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.conversationHistory > div:first-child span, .conversationHistory > p { color: var(--secondary); font-size: 12px; }
+.conversationHistoryList { display: grid; gap: 5px; }
+.conversationHistoryList a { min-width: 0; padding: 10px 11px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; border-radius: 10px; color: var(--text); text-decoration: none; }
+.conversationHistoryList a:hover, .conversationHistoryList a:focus-visible { background: white; }
+.conversationHistoryList strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.conversationHistoryList span { color: var(--secondary); font-size: 11px; white-space: nowrap; }
 .drawerEmpty { flex: 1; padding: 30px 12px; color: #92929a; }
 .drawerEmpty > span { font-size: 14px; }
 .drawerEmpty p { margin-top: 64px; text-align: center; color: #b1b1b8; }
@@ -681,6 +689,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .examHeader .backLink { margin: 0; }
 .examHeader span { color: var(--secondary); font-size: 12px; }
 .examTimer { min-width: 94px; min-height: 42px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 7px; border-radius: 999px; background: var(--text); color: white; }
+.examTimer.urgent { background: var(--danger); }
 .examProgress { margin-bottom: 14px; }
 .examProgress > div { height: 6px; overflow: hidden; border-radius: 999px; background: #dfe3ea; }
 .examProgress > div span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width 220ms ease; }

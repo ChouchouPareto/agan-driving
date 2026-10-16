@@ -12,6 +12,7 @@ export const ticketListSchema = z.object({ items: z.array(ticketSchema), page: z
 export const feedbackSchema = z.object({ id: z.string(), type: z.string() });
 export const questionDetailSchema = z.object({ id: z.string(), conversation_id: z.string(), text: z.string(), resolved_text: z.string().nullable(), intent: z.string(), prompt_version: z.string(), status: z.string(), answer: answerSchema.nullable(), ticket: ticketSchema.nullable() });
 export const conversationDetailSchema = z.object({ id: z.string(), status: z.string(), questions: z.array(questionDetailSchema) });
+export const conversationListSchema = z.object({ items: z.array(z.object({ id: z.string(), title: z.string(), preview: z.string(), updated_at: z.string() })) });
 export type Answer = z.infer<typeof answerSchema>;
 export type Ticket = z.infer<typeof ticketSchema>;
 export type QuestionDetail = z.infer<typeof questionDetailSchema>;

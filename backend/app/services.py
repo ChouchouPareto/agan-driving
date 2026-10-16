@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import secrets
 import time
@@ -17,6 +18,26 @@ from app.pe.prompts import SYSTEM_PROMPT, TEACHING_EXPLANATION_PROMPT
 
 def digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def issue_session_token() -> str:
+    settings = get_settings()
+    issued_at = str(int(time.time()))
+    nonce = secrets.token_urlsafe(24)
+    unsigned = f"{issued_at}.{nonce}"
+    signature = hmac.new(settings.app_secret.encode(), unsigned.encode(), hashlib.sha256).hexdigest()
+    return f"{unsigned}.{signature}"
+
+
+def session_token_is_valid(token: str) -> bool:
+    try:
+        issued_at, nonce, signature = token.split(".", 2)
+        unsigned = f"{issued_at}.{nonce}"
+        expected = hmac.new(get_settings().app_secret.encode(), unsigned.encode(), hashlib.sha256).hexdigest()
+        age_seconds = time.time() - int(issued_at)
+        return hmac.compare_digest(signature, expected) and 0 <= age_seconds <= get_settings().session_ttl_hours * 3600
+    except (TypeError, ValueError):
+        return False
 
 
 QUESTION_BANK = {
@@ -217,10 +238,10 @@ def authenticate_invitation(db: Session, code: str) -> tuple[Student, str] | Non
         return None
     if invitation.student_id:
         student = db.get(Student, invitation.student_id)
-        token = secrets.token_urlsafe(32)
+        token = issue_session_token()
         student.session_token_hash = digest(token)
     else:
-        token = secrets.token_urlsafe(32)
+        token = issue_session_token()
         student = Student(school_id=invitation.school_id, session_token_hash=digest(token))
         db.add(student)
         db.flush()

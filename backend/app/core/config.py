@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     light_model_id: str = "qwen3.6-flash"
     model_timeout_seconds: int = 30
     model_max_retries: int = 1
+    session_ttl_hours: int = 8
     dashscope_api_key: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     ocr_model_id: str = "qwen-vl-ocr"
@@ -61,6 +62,23 @@ class Settings(BaseSettings):
     @property
     def tos_enabled(self) -> bool:
         return self.storage_backend.lower() == "tos" and bool(self.tos_bucket)
+
+    @property
+    def production_issues(self) -> list[str]:
+        if self.app_env.lower() not in {"production", "prod"}:
+            return []
+        issues: list[str] = []
+        if self.app_secret == "development-only-change-me" or len(self.app_secret) < 32:
+            issues.append("APP_SECRET_NOT_SECURE")
+        if not self.learner_invitation_code:
+            issues.append("LEARNER_INVITATION_CODE_MISSING")
+        if not self.staff_invitation_code:
+            issues.append("STAFF_INVITATION_CODE_MISSING")
+        if self.mock_ai:
+            issues.append("MODEL_NOT_CONNECTED")
+        if not self.tos_enabled:
+            issues.append("PERSISTENT_STORAGE_NOT_CONNECTED")
+        return issues
 
 
 @lru_cache

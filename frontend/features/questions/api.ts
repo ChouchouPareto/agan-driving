@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { API_ROOT, idempotencyKey, request } from "@/lib/api/client";
 import { toApiError } from "@/lib/api/errors";
-import { agentDispatchSchema, answerSchema, conversationDetailSchema, conversationSchema, feedbackSchema, questionCreatedSchema, questionDetailSchema, ticketCreatedSchema, ticketSchema } from "@/lib/schemas/domain";
+import { agentDispatchSchema, answerSchema, conversationDetailSchema, conversationListSchema, conversationSchema, feedbackSchema, questionCreatedSchema, questionDetailSchema, ticketCreatedSchema, ticketSchema } from "@/lib/schemas/domain";
 export const createConversation = () => request("/conversations", conversationSchema, { method: "POST", body: "{}", headers: { "Idempotency-Key": idempotencyKey() } });
 export const createQuestion = (conversationId: string, text: string) => request("/questions", questionCreatedSchema, { method: "POST", body: JSON.stringify({ conversation_id: conversationId, text }), headers: { "Idempotency-Key": idempotencyKey() } });
 export const sendAgentMessage = (conversationId: string, text: string, licenseType = "C1", subject = "subject-1") => request("/agent/messages", agentDispatchSchema, { method: "POST", body: JSON.stringify({ conversation_id: conversationId || null, text, license_type: licenseType, subject }) });
 export const getConversation = (conversationId: string) => request(`/conversations/${conversationId}`, conversationDetailSchema);
+export const getConversations = () => request("/conversations", conversationListSchema);
 export const streamQuestion = async (questionId: string, signal?: AbortSignal) => {
   const response = await fetch(`${API_ROOT}/questions/${questionId}/stream`, { signal });
   if (!response.ok) throw await toApiError(response);

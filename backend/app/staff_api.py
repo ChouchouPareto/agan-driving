@@ -10,16 +10,19 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import Answer, Conversation, OCRTask, Question, ReviewTicket, Staff, Student, TicketEvent, TicketMessage, UploadedAsset
 from app.schemas import InvitationVerify, TicketAcknowledge, TicketClaim, TicketReply
-from app.services import digest
+from app.services import digest, issue_session_token, session_token_is_valid
 
 router = APIRouter(prefix="/api/v1")
-LABELS = {"SUBMITTED": "提交给校长", "QUEUED": "校长在摸鱼", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
+LABELS = {"SUBMITTED": "已提交校长", "QUEUED": "等待校长处理", "PROCESSING": "校长处理中", "REPLIED": "校长已回复", "CLOSED": "处理已完成"}
 
 
 def current_staff(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> Staff:
     if not authorization or not authorization.startswith("Bearer "):
         raise error(401, "STAFF_UNAUTHORIZED", "请先进入校长工作台。")
-    staff = db.scalar(select(Staff).where(Staff.session_token_hash == digest(authorization[7:])))
+    token = authorization[7:]
+    if not session_token_is_valid(token):
+        raise error(401, "INVALID_STAFF_SESSION", "工作台登录状态已过期。")
+    staff = db.scalar(select(Staff).where(Staff.session_token_hash == digest(token)))
     if not staff:
         raise error(401, "INVALID_STAFF_SESSION", "工作台登录状态已失效。")
     return staff
@@ -55,7 +58,7 @@ def staff_verify(payload: InvitationVerify, db: Session = Depends(get_db)):
     configured_code = get_settings().staff_invitation_code.strip()
     if not configured_code or not secrets.compare_digest(payload.code.strip(), configured_code):
         raise error(400, "INVALID_STAFF_INVITATION", "工作台邀请码无效。")
-    token = secrets.token_urlsafe(32)
+    token = issue_session_token()
     staff = db.scalar(select(Staff).where(Staff.school_id == "pilot-school", Staff.role == "coach"))
     if staff:
         staff.session_token_hash = digest(token)

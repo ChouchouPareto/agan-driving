@@ -24,12 +24,39 @@ export function MockExamWorkspace({ license = "C1", subject = "subject-1" }: { l
   const current = exam?.items[index]; const answeredCount = Object.keys(answers).length;
   const timeText = useMemo(() => `${String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:${String(secondsLeft % 60).padStart(2, "0")}`, [secondsLeft]);
 
-  async function submit() { if (!exam || !exam.items.length || submitting) return; setSubmitting(true); setError(""); try { const query = new URLSearchParams({ license_type: category.code, subject: stage.id }); const response = await fetch(`/api/backend/practice/mock-exam?${query}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: exam.items.map(item => ({ question_id: item.id, answer: answers[item.id] })) }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? "交卷失败"); setResult(resultSchema.parse(body)); window.scrollTo({ top: 0, behavior: "smooth" }); } catch (reason) { setError(reason instanceof Error ? reason.message : "交卷失败"); } finally { setSubmitting(false); } }
+  const submit = useCallback(async (automatic = false) => {
+    if (!exam || !exam.items.length || submitting) return;
+    const completedAnswers = exam.items.map(item => ({ question_id: item.id, answer: answers[item.id] ?? "" }));
+    if (!automatic && completedAnswers.some(item => !item.answer)) return;
+    setSubmitting(true); setError("");
+    try {
+      const query = new URLSearchParams({ license_type: category.code, subject: stage.id });
+      const response = await fetch(`/api/backend/practice/mock-exam?${query}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: completedAnswers }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message ?? "交卷失败");
+      setResult(resultSchema.parse(body));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "交卷失败"); }
+    finally { setSubmitting(false); }
+  }, [answers, category.code, exam, stage.id, submitting]);
+
+  useEffect(() => {
+    if (!exam || result || secondsLeft !== 0 || submitting) return;
+    const timer = window.setTimeout(() => void submit(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [exam, result, secondsLeft, submit, submitting]);
+
+  useEffect(() => {
+    if (!exam || result || answeredCount === 0) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [answeredCount, exam, result]);
 
   if (loading) return <div className="card status"><span className="dot"/>正在生成模拟试卷…</div>;
   if (error && !exam) return <div className="card emptyState">{error}<button className="button primary" onClick={() => void start()}>重新加载</button></div>;
   if (!exam?.items.length) return <div className="card emptyState">当前题库暂时无法生成模拟试卷。</div>;
   if (result) return <section className="examResult"><span className={result.passed ? "examPass" : "examRetry"}>{result.passed ? "本次通过" : "继续加油"}</span><strong>{result.score}<small>分</small></strong><h1>{result.passed ? "已经达到模拟通过线" : "离通过线又近了一步"}</h1><p>答对 {result.correct_count} / {result.total} 题。错题已经自动进入错题本，超级驾陪会继续陪你补薄弱点。</p><div className="actions"><Link className="specularLink" href={`/practice?mode=wrong&license=${category.code}&subject=${stage.id}`}>复习本次错题</Link><button className="specularButton specularButton--blue" onClick={() => void start()}><span><RotateCcw size={18}/>再考一次</span></button></div></section>;
 
-  return <><header className="examHeader"><div><Link className="backLink" href={`/practice?license=${category.code}&subject=${stage.id}`}>← 退出模拟考</Link><span>{category.code} · {stage.shortLabel}</span></div><div className="examTimer"><Clock3 size={17}/><strong>{timeText}</strong></div></header><section className="examProgress"><div><span style={{ width: `${answeredCount / exam.items.length * 100}%` }}/></div><p>已答 {answeredCount} / {exam.items.length} · {exam.pass_score} 分及格</p></section>{current && <section className="card practiceCard examCard"><div className="practiceQuestionMeta"><span className="questionNumber">第 {index + 1} 题</span><span className="mode">考试中不显示答案</span></div><h2>{current.stem}</h2><div className="optionList">{current.options.map(option => { const showLabel = option.label.trim() !== option.text.trim(); return <button key={option.label} className={`practiceOption ${answers[current.id] === option.label ? "examSelected" : ""}`} onClick={() => setAnswers(value => ({ ...value, [current.id]: option.label }))}>{showLabel && <span>{option.label}</span>}<strong>{option.text}</strong>{answers[current.id] === option.label && <CheckCircle2 size={19}/>}</button>; })}</div></section>}<div className="examNavigation"><button className="button secondaryButton" disabled={index === 0} onClick={() => setIndex(value => value - 1)}><ArrowLeft size={18}/>上一题</button>{index < exam.items.length - 1 ? <button className="button primary" onClick={() => setIndex(value => value + 1)}>下一题<ArrowRight size={18}/></button> : <button className="button primary" disabled={answeredCount !== exam.items.length || submitting} onClick={() => void submit()}>{submitting ? "正在交卷…" : answeredCount === exam.items.length ? "确认交卷" : `还有 ${exam.items.length - answeredCount} 题`}</button>}</div>{error && <div className="card error">{error}</div>}</>;
+  return <><header className="examHeader"><div><Link className="backLink" href={`/practice?license=${category.code}&subject=${stage.id}`} onClick={event => { if (answeredCount > 0 && !window.confirm("退出后本次模拟考记录不会保留，确定退出吗？")) event.preventDefault(); }}>← 退出模拟考</Link><span>{category.code} · {stage.shortLabel}</span></div><div className={`examTimer ${secondsLeft <= 300 ? "urgent" : ""}`} aria-live={secondsLeft <= 60 ? "polite" : "off"}><Clock3 aria-hidden="true" size={17}/><strong>{timeText}</strong></div></header><section className="examProgress"><div><span style={{ width: `${answeredCount / exam.items.length * 100}%` }}/></div><p>已答 {answeredCount} / {exam.items.length} · {exam.pass_score} 分及格{secondsLeft === 0 ? " · 时间到，正在自动交卷" : ""}</p></section>{current && <section className="card practiceCard examCard"><div className="practiceQuestionMeta"><span className="questionNumber">第 {index + 1} 题</span><span className="mode">考试中不显示答案</span></div><h2>{current.stem}</h2><div className="optionList">{current.options.map(option => { const showLabel = option.label.trim() !== option.text.trim(); return <button key={option.label} disabled={secondsLeft === 0 || submitting} className={`practiceOption ${answers[current.id] === option.label ? "examSelected" : ""}`} onClick={() => setAnswers(value => ({ ...value, [current.id]: option.label }))}>{showLabel && <span>{option.label}</span>}<strong>{option.text}</strong>{answers[current.id] === option.label && <CheckCircle2 aria-hidden="true" size={19}/>}</button>; })}</div></section>}<div className="examNavigation"><button className="button secondaryButton" disabled={index === 0 || secondsLeft === 0} onClick={() => setIndex(value => value - 1)}><ArrowLeft aria-hidden="true" size={18}/>上一题</button>{index < exam.items.length - 1 ? <button className="button primary" disabled={secondsLeft === 0} onClick={() => setIndex(value => value + 1)}>下一题<ArrowRight aria-hidden="true" size={18}/></button> : <button className="button primary" disabled={answeredCount !== exam.items.length || submitting || secondsLeft === 0} onClick={() => void submit()}>{submitting ? "正在交卷…" : answeredCount === exam.items.length ? "确认交卷" : `还有 ${exam.items.length - answeredCount} 题`}</button>}</div>{error && <div className="card error" role="alert">{error}</div>}</>;
 }
