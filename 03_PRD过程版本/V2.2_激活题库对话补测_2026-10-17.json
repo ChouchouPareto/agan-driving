@@ -1,0 +1,251 @@
+{
+  "environment": "local-real-model-isolated-db",
+  "knowledge_scope": "active-school",
+  "prompt_version": "pe-v1.3-human-confirm",
+  "results": [
+    {
+      "scenario": "theory_topic_switch",
+      "input": "驾驶机动车通过没有交通信号的交叉路口怎样行驶？",
+      "http_status": 200,
+      "expected_intents": [
+        "QUESTION_ANSWER"
+      ],
+      "expected_action": "ANSWER",
+      "response": {
+        "conversation_id": "bc094908-2fe6-4abf-ab11-16d452087a7c",
+        "intent": "QUESTION_ANSWER",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "0af7a616-bf29-409c-94ba-80f0ac4cded8",
+        "destination": null,
+        "assistant_message": null,
+        "prompt_version": "pe-v1.3-human-confirm"
+      },
+      "answer": {
+        "id": "b3c717ba-acf7-458b-9608-8497e36fcaa1",
+        "direct_answer": "A. 减速慢行",
+        "short_reason": "路口路况复杂，减速慢行能确保观察充分并随时停车。",
+        "detail": "在没有交通信号灯控制的交叉路口，车辆和行人通行权不明确，存在较多潜在冲突点。为了保障安全，驾驶员必须降低车速，以便有足够的时间观察四周情况，并在发现危险时能够及时采取制动措施。",
+        "common_mistake": "容易误以为没有红绿灯就可以正常速度通过，或者错误地加速抢行，忽视了对其他方向来车和行人的观察。",
+        "evidence": [
+          {
+            "source_type": "question_bank",
+            "source_id": "fed162e3-7b6c-4a7c-bc9a-f87b10895337",
+            "title": "科目一标准题库",
+            "version": "research-c1-text-preview-20260828",
+            "excerpt": "没有交通信号灯的路口路况复杂，应减速慢行。"
+          }
+        ],
+        "route": "standard_question",
+        "risk_codes": []
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 509,
+        "error": null
+      },
+      "seconds": 4.702,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {},
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 397,
+            "completion_tokens": 112,
+            "total_tokens": 509,
+            "completion_tokens_details": {
+              "text_tokens": 112
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 397
+            }
+          },
+          "seconds": 4.623
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "theory_topic_switch",
+      "input": "为什么？",
+      "http_status": 200,
+      "expected_intents": [
+        "FOLLOW_UP"
+      ],
+      "expected_action": "ANSWER",
+      "response": {
+        "conversation_id": "bc094908-2fe6-4abf-ab11-16d452087a7c",
+        "intent": "FOLLOW_UP",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "adf4c223-5ff6-484f-b0d3-3bb30b0b238a",
+        "destination": null,
+        "assistant_message": null,
+        "prompt_version": "pe-v1.3-human-confirm"
+      },
+      "answer": {
+        "stream_error": "event: status\ndata: {\"status\":\"ROUTING\"}\n\nevent: error\ndata: {\"error\": {\"code\": \"INTERNAL_ERROR\", \"message\": \"处理失败，请稍后重试。\"}}\n\n"
+      },
+      "seconds": 2.154,
+      "model_calls": [
+        {
+          "model": "text-embedding-v4",
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 18,
+            "total_tokens": 18
+          },
+          "seconds": 2.104
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "theory_topic_switch",
+      "input": "有没有什么口诀？",
+      "http_status": 200,
+      "expected_intents": [
+        "MNEMONIC_HELP"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "bc094908-2fe6-4abf-ab11-16d452087a7c",
+        "intent": "MNEMONIC_HELP",
+        "skill_id": "mnemonic_coach",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "有，科目一确实有很多好记的口诀。比如“三长一短选最短，三短一长选最长”，或者遇到“减速让行、停车观察”这类题，通常都是对的。\n\n你想针对哪类题型找口诀？是罚款扣分、速度限制，还是交警手势？告诉我具体难点，我帮你整理几个实用的。",
+        "prompt_version": "pe-v1.3-human-confirm"
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 746
+      },
+      "seconds": 3.692,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {
+            "current_intent": "MNEMONIC_HELP",
+            "student_context": {
+              "region": "全国",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 672,
+            "completion_tokens": 74,
+            "total_tokens": 746,
+            "completion_tokens_details": {
+              "text_tokens": 74
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 672
+            }
+          },
+          "seconds": 3.669
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "theory_topic_switch",
+      "input": "为什么教练让我等了这么久",
+      "http_status": 200,
+      "expected_intents": [
+        "SCHOOL_SERVICE"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "bc094908-2fe6-4abf-ab11-16d452087a7c",
+        "intent": "SCHOOL_SERVICE",
+        "skill_id": "school_service",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "等教练确实挺磨人的，尤其是心里急着练车的时候。这种情况通常是因为前面有学员在实操，或者教练在处理其他事务（比如协调车辆、休息调整）。\n\n既然你在全国范围且考C1科目一，如果现在还没到预约的练车时间，建议你先利用这段空档再刷几套模拟题，巩固一下刚背的口诀。要是已经约好时间却迟迟没动静，可以直接礼貌地问一句：“教练，大概还需要等多久？我先在旁边复习。”",
+        "prompt_version": "pe-v1.3-human-confirm"
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 863
+      },
+      "seconds": 2.821,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 4,
+          "context": {
+            "current_intent": "SCHOOL_SERVICE",
+            "student_context": {
+              "region": "全国",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 760,
+            "completion_tokens": 103,
+            "total_tokens": 863,
+            "completion_tokens_details": {
+              "text_tokens": 103
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 760
+            }
+          },
+          "seconds": 2.807
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "theory_topic_switch",
+      "input": "你刚刚讲的那道题是什么？",
+      "http_status": 200,
+      "expected_intents": [
+        "FOLLOW_UP",
+        "CHITCHAT"
+      ],
+      "expected_action": "ANY",
+      "response": {
+        "conversation_id": "bc094908-2fe6-4abf-ab11-16d452087a7c",
+        "intent": "QUESTION_ANSWER",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "7a8846f5-d824-4ca4-8ba3-5f3b65c5017e",
+        "destination": null,
+        "assistant_message": null,
+        "prompt_version": "pe-v1.3-human-confirm"
+      },
+      "answer": {
+        "stream_error": "event: status\ndata: {\"status\":\"ROUTING\"}\n\nevent: error\ndata: {\"error\": {\"code\": \"INTERNAL_ERROR\", \"message\": \"处理失败，请稍后重试。\"}}\n\n"
+      },
+      "seconds": 1.08,
+      "model_calls": [
+        {
+          "model": "text-embedding-v4",
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 10,
+            "total_tokens": 10
+          },
+          "seconds": 1.026
+        }
+      ],
+      "route_pass": false
+    }
+  ]
+}

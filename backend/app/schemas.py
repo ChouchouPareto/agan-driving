@@ -48,6 +48,7 @@ class AgentMessageResult(BaseModel):
     question_id: str | None = None
     destination: str | None = None
     assistant_message: str | None = None
+    handoff_available: bool = False
     prompt_version: str
 
 

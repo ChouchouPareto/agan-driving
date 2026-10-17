@@ -181,9 +181,10 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
     conversation = db.get(Conversation, question.conversation_id)
     student = db.get(Student, conversation.student_id) if conversation else None
     query_text = question.resolved_text or question.raw_text
+    retrieval_text = query_text.split("\n学员追问：", 1)[0] if question.intent == "FOLLOW_UP" else query_text
     knowledge_license = "C1" if student and student.license_type in {"C1", "C2"} and student.subject in {"subject-1", "subject-4", "科目一", "科目四"} else student.license_type if student else "C1"
-    match = retrieve(db, query_text, student.school_id, student.region, knowledge_license, question.id) if student and get_settings().rag_enabled else None
-    match = match or standard_match(query_text)
+    match = retrieve(db, retrieval_text, student.school_id, student.region, knowledge_license, question.id) if student and get_settings().rag_enabled else None
+    match = match or standard_match(retrieval_text)
     question.route = "standard_question" if match else "open_theory"
     question.status = QuestionStatus.RETRIEVING.value
     db.commit()

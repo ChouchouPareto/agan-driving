@@ -24,30 +24,46 @@ class IntentResult:
     source: str
 
 
-def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
+def _rule_intent(text: str, has_context: bool, previous_intent: str | None = None) -> IntentResult | None:
     value = text.strip()
     compact = re.sub(r"[\s-]", "", value)
     if re.search(r"忽略.{0,10}(之前|以上|系统|所有).{0,10}(指令|提示)|系统提示词|开发者消息|越狱|jailbreak|绕过.{0,10}(规则|限制|安全)|泄露.{0,10}(提示词|密钥|配置)|输出.{0,10}(系统|隐藏).{0,10}(提示词|指令)|扮演.{0,20}(不受限制|开发者模式)", value, re.I):
         return IntentResult("PROMPT_INJECTION", 0.99, "security_rule")
     if (
-        re.search(r"身份证|银行卡|缴费单|付款码|财务信息|家庭住址|登录密码|短信验证码|支付密码", value)
+        re.search(r"(?:这是|发给你|上传|附上).{0,8}(?:身份证|银行卡|缴费单|付款码|家庭住址|登录密码|短信验证码|支付密码)|(?:登录密码|短信验证码|支付密码|家庭住址)[是为：:]", value)
         or re.search(r"(?<!\d)1[3-9]\d{9}(?!\d)", compact)
         or re.search(r"(?<!\d)\d{17}[\dXx](?!\d)", compact)
         or re.search(r"(?<!\d)\d{16,19}(?!\d)", compact)
         or re.search(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", value)
     ):
         return IntentResult("SENSITIVE_CONTENT", 0.99, "security_rule")
-    if re.search(r"(?:不想|不愿|先不|暂时不|不要|别|不想再).{0,5}(?:刷题|练题|做题|模拟考)|(?:刷题|练题|做题).{0,4}(?:不动|烦了|累了)", value):
+    if re.search(r"(?:不想|不愿|先不|暂时不|不要|别|不打算|不准备|不去|取消|不).{0,8}(?:刷题|练题|做题|模拟考|错题|收藏)|(?:刷题|练题|做题).{0,4}(?:不动|烦了|累了)", value):
         return IntentResult("EMOTIONAL_SUPPORT", 0.99, "negation_rule")
+    # Emotional meaning takes precedence over incidental words such as 科目二/刷题.
+    if re.search(r"不开心|难过|焦虑|紧张|害怕|压力大|好烦|烦死|崩溃|好累|心累|麻烦|不想学|不想继续|学不动|考不过|没信心|挂了|考试没过|又要补考|否定我|教练的态度|你没听懂|不是怕考试", value):
+        return IntentResult("EMOTIONAL_SUPPORT", 0.98, "rule")
     if re.search(r"口诀|怎么记|记忆方法|好记的方法", value):
         return IntentResult("MNEMONIC_HELP", 0.98, "rule")
+    short_follow_up = re.fullmatch(r"(?:为什么|为啥|什么意思|然后呢|所以呢|怎么理解|没看懂|还是不懂|再讲(?:一次|一遍)?|换个说法)[？?!！。,.\s]*", value)
+    if short_follow_up:
+        if has_context:
+            return IntentResult("FOLLOW_UP", 0.96, "context_rule")
+        return IntentResult(previous_intent if previous_intent in {"EMOTIONAL_SUPPORT", "SCHOOL_SERVICE", "LICENSE_TIMELINE", "POLICY_REGULATION", "LEARNING_PROCESS"} else "CHITCHAT", 0.95, "context_rule")
+    if re.search(r"(?:刚刚|刚才|上次).{0,8}(?:题|答案)|^(?:上一题|这题|那题|这个答案)", value) and has_context:
+        return IntentResult("FOLLOW_UP", 0.97, "context_rule")
+    if re.search(r"(?:拿证|取证|领证).*(?:保证|承诺)|(?:保证|承诺).*(?:拿证|取证|领证)", value):
+        return IntentResult("LICENSE_TIMELINE", 0.98, "rule")
+    if previous_intent in {"LICENSE_TIMELINE", "POLICY_REGULATION", "LEARNING_PROCESS"} and re.search(r"C[12]|周末|已经通过|已过科|^(?:我在|我是|在)|^[\u4e00-\u9fff]{2,6}[，,]", value, re.I):
+        return IntentResult(previous_intent, 0.96, "context_rule")
+    if re.search(r"正确率|薄弱|学习进度|学得怎么样|(?:错题|刷题).{0,10}(?:记不住|总错|总是错|怎么复习)", value):
+        return IntentResult("LEARNING_PROGRESS", 0.98, "rule")
     rules = [
         (r"模拟考|模拟考试|考试模式|测一下能不能过", "MOCK_EXAM"),
-        (r"错题", "WRONG_QUESTIONS"),
-        (r"收藏", "FAVORITES"),
-        (r"刷题|练题|顺序练习|开始练习|做题", "START_PRACTICE"),
+        (r"^(?:错题|错题本)[。！!？?]*$|(?:打开|复习|练|看|进入).{0,8}错题", "WRONG_QUESTIONS"),
+        (r"^收藏(?:题)?[。！!？?]*$|(?:打开|查看|看看|进入).{0,6}收藏", "FAVORITES"),
+        (r"^(?:刷题|练题|做题)[。！!？?]*$|(?:想|要|开始|去|带我|一起).{0,6}(?:刷题|练题|做题)|顺序练习|开始练习|(?:出|来).{0,4}道.{0,6}题", "START_PRACTICE"),
         (r"学习进度|正确率|薄弱点|学得怎么样", "LEARNING_PROGRESS"),
-        (r"转人工|问校长|不懂就问校长|找教练", "HUMAN_HELP"),
+        (r"转人工|问校长|请校长|联系校长|找校长|找教练", "HUMAN_HELP"),
         (r"(驾驶证|驾照).{0,8}(还没|没有|迟迟).{0,8}(拿|发|出)|什么时候.{0,4}(拿证|发证)", "LICENSE_TIMELINE"),
         (r"最快.{0,6}(拿证|取证)|(拿证|取证).{0,8}(多久|周期|时间)|多久.{0,6}(拿证|取证)|学车.{0,6}(多久|周期)", "LICENSE_TIMELINE"),
         (r"政策|法规|新规|学时.{0,4}(要求|规定)|考试.{0,4}(间隔|规定)|有效期", "POLICY_REGULATION"),
@@ -66,8 +82,6 @@ def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
         return IntentResult("PRODUCT_HELP", 0.98, "rule")
     if re.search(r"科目[二三四]|倒车入库|侧方停车|坡道起步|直角转弯|曲线行驶|百米加减挡|靠边停车|离合器|换挡|路考", value):
         return IntentResult("PRACTICAL_TRAINING", 0.98, "rule")
-    if re.search(r"不开心|难过|焦虑|紧张|害怕|压力大|好烦|烦死|崩溃|好累|心累|麻烦|不想学|不想继续|学不动|考不过|没信心|又?挂了怎么办|考试没过|又要补考", value):
-        return IntentResult("EMOTIONAL_SUPPORT", 0.98, "rule")
     if re.search(r"你是谁|你能做什么|陪我聊|聊会儿|无聊|讲个笑话", value) or re.fullmatch(r"(?:嘿+|哈+|哈哈+|嘻嘻+|呵呵+|嗯+|哦+|好吧|行吧|在吗|干嘛呢)[~～!！。,.，\s]*", value):
         return IntentResult("CHITCHAT", 0.95, "rule")
     if has_context:
@@ -81,7 +95,7 @@ def _rule_intent(text: str, has_context: bool) -> IntentResult | None:
     return None
 
 
-def _model_intent(text: str, has_context: bool) -> IntentResult | None:
+def _model_intent(text: str, has_context: bool, history: list[dict] | None = None) -> IntentResult | None:
     settings = get_settings()
     if not settings.dashscope_api_key:
         return None
@@ -89,17 +103,19 @@ def _model_intent(text: str, has_context: bool) -> IntentResult | None:
         "model": settings.light_model_id,
         "messages": [
             {"role": "system", "content": INTENT_CLASSIFIER_PROMPT},
-            {"role": "user", "content": f"是否有上一轮题目：{has_context}\n用户消息：{text}"},
+            {"role": "user", "content": json.dumps({"has_recent_question": has_context, "recent_dialogue": (history or [])[-4:], "message": text}, ensure_ascii=False)},
         ],
         "response_format": {"type": "json_object"},
         "temperature": 0,
+        "enable_thinking": False,
+        "max_tokens": 120,
     }
     try:
         response = httpx.post(
             f"{settings.dashscope_base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {settings.dashscope_api_key}"},
             json=payload,
-            timeout=min(settings.model_timeout_seconds, 3),
+            timeout=min(settings.model_timeout_seconds, 8),
         )
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
@@ -112,8 +128,8 @@ def _model_intent(text: str, has_context: bool) -> IntentResult | None:
     return None
 
 
-def classify_intent(text: str, has_context: bool) -> IntentResult:
-    return _rule_intent(text, has_context) or _model_intent(text, has_context) or IntentResult("OUT_OF_SCOPE", 0.6, "fallback")
+def classify_intent(text: str, has_context: bool, previous_intent: str | None = None, history: list[dict] | None = None) -> IntentResult:
+    return _rule_intent(text, has_context, previous_intent) or _model_intent(text, has_context, history) or IntentResult("CHITCHAT", 0.5, "fallback")
 
 
 def resolve_follow_up(text: str, previous_question: str | None) -> str:

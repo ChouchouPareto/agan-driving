@@ -229,9 +229,11 @@ def _load_vector_index(db: Session, version_id: str) -> list[tuple[str, list[flo
     cached = _VECTOR_INDEX_CACHE.get(version_id)
     if cached is not None:
         return cached
-    chunks = db.scalars(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_version_id == version_id, KnowledgeChunk.embedding_status == "READY")).all()
-    index = [(chunk.question_id, chunk.embedding) for chunk in chunks if chunk.embedding]
-    _VECTOR_INDEX_CACHE[version_id] = index
+    chunks = db.scalars(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_version_id == version_id)).all()
+    index = [(chunk.question_id, chunk.embedding) for chunk in chunks if chunk.embedding and chunk.embedding_status == "READY"]
+    # Do not freeze an incomplete backfill in process memory.
+    if index and len(index) == len(chunks):
+        _VECTOR_INDEX_CACHE[version_id] = index
     return index
 
 
@@ -271,12 +273,24 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
         db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type="ambiguous", candidate_ids=[item.id for item in same_stem], final_evidence_ids=[], error_code="AMBIGUOUS_QUESTION", latency_ms=int((time.monotonic() - started) * 1000))); db.commit()
         return None
     if not exact:
+        # A similar true/false proposition is not the answer to "how/which".
+        # Keep open questions away from Boolean answer labels before retrieval.
+        if re.search(r"怎么|怎样|如何|什么|哪[个些种]|多少|几[次分米天]", text) and not re.search(r"是否|对不对|正确吗|错误吗|判断", text):
+            all_questions = [item for item in all_questions if item.standard_answer.strip() not in {"正确", "错误", "对", "错", "true", "false"} and item.question_type not in {"true_false", "judgment"}]
         settings = get_settings()
         keyword_scores = {item.id: _keyword_score(normalized, item.normalized_stem) for item in all_questions}
         keyword = sorted(all_questions, key=lambda item: keyword_scores[item.id], reverse=True)[:settings.rag_keyword_top_k]
         candidate_scores = {item.id: keyword_scores[item.id] * .35 for item in keyword}
-        query_vector = gateway.embed([text])[0]
-        vector_scores = {question_id: _cosine_similarity(query_vector, embedding) for question_id, embedding in _load_vector_index(db, version.id)}
+        index = _load_vector_index(db, version.id)
+        vector_scores = {}
+        try:
+            if index:
+                query_vector = gateway.embed([text])[0]
+                vector_scores = {question_id: _cosine_similarity(query_vector, embedding) for question_id, embedding in index}
+            else:
+                retrieval_error = "VECTOR_INDEX_INCOMPLETE"
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError):
+            retrieval_error = "EMBEDDING_DEGRADED"
         vector_questions = sorted(all_questions, key=lambda item: vector_scores.get(item.id, 0.0), reverse=True)[:settings.rag_vector_top_k]
         for item in vector_questions:
             candidate_scores[item.id] = candidate_scores.get(item.id, 0.0) + vector_scores.get(item.id, 0.0) * .65
@@ -294,7 +308,9 @@ def retrieve(db: Session, text: str, school_id: str, region: str, license_type: 
     selected = candidates[0] if candidates else None
     if selected and not exact:
         similarity = SequenceMatcher(None, normalized, selected.normalized_stem).ratio()
-        if max(similarity, retrieval_confidence.get(selected.id, 0.0)) < .24:
+        # A missing vector provider must not turn weak character overlap into a fact.
+        minimum = .80 if retrieval_error in {"VECTOR_INDEX_INCOMPLETE", "EMBEDDING_DEGRADED"} else .60
+        if max(similarity, retrieval_confidence.get(selected.id, 0.0)) < minimum:
             selected = None
     error_code = retrieval_error if selected else "NO_TRUSTED_EVIDENCE"
     db.add(RetrievalTrace(question_id=question_id, knowledge_version_id=version.id, query_hash=fingerprint(text), match_type=match_type if selected else "none", candidate_ids=[item.id for item in candidates], final_evidence_ids=[selected.id] if selected else [], error_code=error_code, latency_ms=int((time.monotonic() - started) * 1000))); db.commit()

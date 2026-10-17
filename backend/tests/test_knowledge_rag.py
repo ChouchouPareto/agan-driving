@@ -98,6 +98,24 @@ def test_vector_recall_finds_a_semantic_paraphrase():
         assert result and result["external_id"] == "TEST-001" and result["match_type"] == "standard_hybrid"
 
 
+def test_open_question_never_uses_a_boolean_answer(tmp_path):
+    import json
+    rows = json.loads(FIXTURE.read_text())
+    rows.append({"external_id": "JUDGMENT", "stem": "通过没有交通信号的交叉路口要减速慢行。", "question_type": "true_false", "options": [{"label": "正确", "text": "正确"}, {"label": "错误", "text": "错误"}], "standard_answer": "正确", "explanation": "先减速观察。", "knowledge_points": []})
+    path = tmp_path / "mixed.json"
+    path.write_text(json.dumps(rows, ensure_ascii=False))
+    class JudgmentFirst(SemanticGateway):
+        def rerank(self, query, documents):
+            assert all("要减速慢行。" not in doc for doc in documents)
+            return list(range(len(documents)))
+    with SessionLocal() as db:
+        gateway = JudgmentFirst()
+        version = build_index(db, import_bank(db, path, name="混合题型", supplier="test", version_label="mixed-v1").id, gateway)
+        result = retrieve(db, "没有信号灯的交叉路口应该怎样通过？", "pilot-school", "全国", "C1", gateway=gateway, knowledge_version_id=version.id)
+        assert result and result["external_id"] == "TEST-001"
+        assert result["answer"] not in {"正确", "错误"}
+
+
 class FailingRerankGateway(SemanticGateway):
     def rerank(self, query, documents):
         raise RuntimeError("simulated provider outage")

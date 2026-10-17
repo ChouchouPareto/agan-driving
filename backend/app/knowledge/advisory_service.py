@@ -36,10 +36,19 @@ def retrieve_advisory_documents(db: Session, query: str, topic: str, license_typ
     tokens = set(re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z]\d", query))
     ranked = []
     for record in records:
+        if license_type not in record.license_types:
+            continue
+        keyword_hits = sum(keyword in query for keyword in record.keywords)
+        if record.topic != topic and not (topic == "POLICY_REGULATION" and keyword_hits):
+            continue
+        # Broad policy categories must not return unrelated regulations merely
+        # because the record and question share a topic label.
+        if topic == "POLICY_REGULATION" and not keyword_hits:
+            continue
         haystack = " ".join([record.title, record.summary, record.content, *record.keywords])
         score = (5 if record.topic == topic else 0) + (2 if license_type in record.license_types else 0)
         score += 1 if record.region == "全国" or region in record.region else 0
-        score += sum(3 for keyword in record.keywords if keyword in query)
+        score += 3 * keyword_hits
         score += sum(1 for token in tokens if token in haystack)
         if score > 4:
             ranked.append((score, record))

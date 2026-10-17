@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 data/*.db
+data/backups/
 data/private-assets/
 data/rag/
 frontend/node_modules/

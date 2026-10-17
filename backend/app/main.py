@@ -14,11 +14,12 @@ from app.core.database import Base, SessionLocal, engine
 from app.services import seed
 from app.database_backup import backup_database, restore_database_if_needed
 from app.rate_limit import limiter, request_identity
+from app.core.migrations import initialize_database
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     restore_database_if_needed()
-    Base.metadata.create_all(engine)
+    initialize_database(engine)
     with SessionLocal() as db:
         seed(db)
     yield
@@ -76,9 +77,12 @@ def readiness():
     settings = get_settings()
     with SessionLocal() as db:
         active_knowledge = db.scalar(text("SELECT COUNT(*) FROM knowledge_versions WHERE status = 'ACTIVE'")) or 0
+        pending_vectors = db.scalar(text("SELECT COUNT(*) FROM knowledge_chunks c JOIN knowledge_versions v ON v.id=c.knowledge_version_id WHERE v.status='ACTIVE' AND (c.embedding IS NULL OR c.embedding_status != 'READY')")) or 0
     issues = [*settings.production_issues]
     if active_knowledge == 0:
         issues.append("ACTIVE_KNOWLEDGE_MISSING")
+    if pending_vectors:
+        issues.append("VECTOR_BACKFILL_REQUIRED")
     payload = {"status": "ready" if not issues else "not_ready", "issues": issues, "active_knowledge_versions": active_knowledge}
     return JSONResponse(status_code=200 if not issues else 503, content=payload)
 

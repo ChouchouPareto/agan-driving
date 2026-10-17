@@ -1,5 +1,6 @@
 import json
 import random
+import re
 
 from datetime import datetime, timezone
 
@@ -18,8 +19,10 @@ from app.services import AIServiceError, authenticate_invitation, create_answer,
 from app.pe import classify_intent, resolve_follow_up
 from app.pe.prompts import PROMPT_VERSION
 from app.skills import generate_conversation_reply, resolve_skill
-from app.knowledge.advisory_service import retrieve_advisory_documents
 from app.knowledge.mnemonics import mnemonic_for
+from app.pe.context import recent_dialogue, learner_context
+from app.skills.runtime import execute_skill
+from app.skills.registry import DESTINATIONS
 
 router = APIRouter(prefix="/api/v1")
 LICENSE_TYPES = {"A1", "A2", "A3", "B1", "B2", "C1", "C2", "C3", "C4", "C5", "C6", "D", "E", "F", "M", "N", "P"}
@@ -381,8 +384,9 @@ def get_conversation(conversation_id: str, student: Student = Depends(current_st
     conversation = db.scalar(select(Conversation).where(Conversation.id == conversation_id, Conversation.student_id == student.id))
     if not conversation:
         raise error(404, "NOT_FOUND", "未找到该会话。")
-    questions = db.scalars(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at)).all()
-    return {"id": conversation.id, "status": conversation.status, "questions": [_question_payload(db, q, student) for q in questions]}
+    questions = db.scalars(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "HUMAN_HELP").order_by(Question.created_at)).all()
+    turns = db.scalars(select(AgentTurn).where(AgentTurn.conversation_id == conversation.id).order_by(AgentTurn.created_at)).all()
+    return {"id": conversation.id, "status": conversation.status, "questions": [_question_payload(db, q, student) for q in questions], "turns": [{"id": t.id, "user": t.user_text, "assistant": t.assistant_text, "intent": t.intent, "created_at": t.created_at, "destination": DESTINATIONS.get(t.intent), "handoff_available": t.intent in {"HUMAN_HELP", "SCHOOL_SERVICE"}} for t in turns]}
 
 
 def _answer_payload(question: Question) -> dict | None:
@@ -404,7 +408,7 @@ def _question_payload(db: Session, question: Question, student: Student) -> dict
     answer = _answer_payload(question)
     if answer is not None and review_ticket and question.status == "NEEDS_REVIEW":
         answer["risk_codes"] = review_ticket.risk_codes
-    return {"id": question.id, "conversation_id": question.conversation_id, "text": question.raw_text, "resolved_text": question.resolved_text, "intent": question.intent, "prompt_version": question.prompt_version, "status": question.status, "answer": answer, "ticket": ticket}
+    return {"id": question.id, "conversation_id": question.conversation_id, "created_at": question.created_at, "text": question.raw_text, "resolved_text": question.resolved_text, "intent": question.intent, "prompt_version": question.prompt_version, "status": question.status, "answer": answer, "ticket": ticket}
 
 
 @router.post("/agent/messages", response_model=AgentMessageResult)
@@ -421,30 +425,49 @@ def agent_message(payload: AgentMessageCreate, student: Student = Depends(curren
     if conversation is None:
         conversation = Conversation(student_id=student.id)
         db.add(conversation); db.flush()
-    previous = db.scalar(select(Question).where(Question.conversation_id == conversation.id).order_by(Question.created_at.desc()))
-    previous_turn = db.scalar(select(AgentTurn.id).where(AgentTurn.conversation_id == conversation.id).limit(1))
-    context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent != "FOLLOW_UP").order_by(Question.created_at.desc()))
-    classified = classify_intent(payload.text, previous is not None or previous_turn is not None)
+    context_question = db.scalar(select(Question).where(Question.conversation_id == conversation.id, Question.intent.notin_(["FOLLOW_UP", "HUMAN_HELP"])).order_by(Question.created_at.desc()))
+    history = recent_dialogue(db, conversation.id)
+    previous_intent = history[-1]["intent"] if history else None
+    explicit_reference = bool(re.search(r"(?:刚刚|刚才|上次).{0,8}(?:题|答案)|^(?:上一题|这题|那题|这个答案)", payload.text))
+    question_context = context_question is not None and (previous_intent in {"QUESTION_ANSWER", "FOLLOW_UP", "MNEMONIC_HELP"} or explicit_reference)
+    classified = classify_intent(payload.text, question_context, previous_intent, history)
     conversation.updated_at = datetime.now(timezone.utc)
-    evidence = retrieve_advisory_documents(db, payload.text, classified.intent, payload.license_type, student.region) if classified.intent in {"INDUSTRY_KNOWLEDGE", "LEARNING_PROCESS", "POLICY_REGULATION", "LICENSE_TIMELINE"} else None
-    if classified.intent == "MNEMONIC_HELP" and context_question:
-        explanation = context_question.answer.detail if context_question.answer else ""
-        mnemonic = mnemonic_for(context_question.resolved_text or context_question.raw_text, explanation)
-        if mnemonic:
-            evidence = [{"title": "刚才这道题的记忆口诀", "summary": mnemonic, "source_type": "reviewed_mnemonic"}]
-    skill = resolve_skill(classified.intent, payload.text, evidence)
+    skill = resolve_skill(classified.intent, payload.text)
     if skill.action == "NAVIGATE":
-        db.commit()
         labels = {"START_PRACTICE": "想刷题的话，点下面就能开始。", "WRONG_QUESTIONS": "可以，点下面打开错题本。", "FAVORITES": "可以，点下面看收藏的题。", "MOCK_EXAM": "准备好了就点下面，再开始模拟考试。"}
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="SUGGEST_NAVIGATION", destination=skill.destination, assistant_message=labels.get(classified.intent, "点下面再继续。"), prompt_version=PROMPT_VERSION)
-    if skill.action == "RESPOND":
-        message = skill.assistant_message or generate_conversation_reply(db, conversation, student, classified.intent, skill.spec.id, payload.text.strip(), evidence)
+        message = labels.get(classified.intent, "点下面再继续。")
+        db.add(AgentTurn(conversation_id=conversation.id, student_id=student.id, user_text=payload.text, assistant_text=message, intent=classified.intent, skill_id=skill.spec.id, model_id="navigation", prompt_version=PROMPT_VERSION, is_fallback=False))
         db.commit()
-        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="RESPOND", assistant_message=message, prompt_version=PROMPT_VERSION)
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="SUGGEST_NAVIGATION", destination=skill.destination, assistant_message=message, prompt_version=PROMPT_VERSION)
+    if skill.action == "RESPOND":
+        runtime = execute_skill(db, student, classified.intent, payload.text, learner_context(student, history, payload.text), context_question) if not skill.assistant_message else None
+        message = skill.assistant_message or generate_conversation_reply(db, conversation, student, classified.intent, skill.spec.id, payload.text.strip(), runtime.evidence, runtime)
+        db.commit()
+        return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="RESPOND", assistant_message=message, handoff_available=bool(runtime and runtime.handoff_available), prompt_version=PROMPT_VERSION)
     resolved = resolve_follow_up(payload.text, context_question.raw_text if context_question else None) if classified.intent == "FOLLOW_UP" else payload.text.strip()
     question = Question(conversation_id=conversation.id, raw_text=payload.text.strip(), resolved_text=resolved, intent=classified.intent, prompt_version=PROMPT_VERSION)
     db.add(question); db.commit()
     return AgentMessageResult(conversation_id=conversation.id, intent=classified.intent, skill_id=skill.spec.id, action="ANSWER", question_id=question.id, prompt_version=PROMPT_VERSION)
+
+
+@router.post("/conversations/{conversation_id}/review-ticket")
+def handoff_conversation(conversation_id: str, student: Student = Depends(current_student), db: Session = Depends(get_db)):
+    conversation = db.scalar(select(Conversation).where(Conversation.id == conversation_id, Conversation.student_id == student.id))
+    if not conversation:
+        raise error(404, "NOT_FOUND", "未找到该会话。")
+    existing = db.scalar(select(ReviewTicket).join(Question).where(Question.conversation_id == conversation_id, Question.intent == "HUMAN_HELP", ReviewTicket.student_id == student.id, ReviewTicket.status != "CLOSED"))
+    if existing:
+        return {"id": existing.id, "status": existing.status}
+    history = recent_dialogue(db, conversation_id)
+    if not history:
+        raise error(422, "EMPTY_CONVERSATION", "先说一下需要校长帮忙处理的事吧。")
+    # Send only the learner's words, not speculative AI suggestions.
+    summary = "学员确认提交的对话：\n" + "\n".join(item["user"] for item in history)
+    question = Question(conversation_id=conversation_id, raw_text=summary, resolved_text=summary, intent="HUMAN_HELP", status="NEEDS_REVIEW", prompt_version=PROMPT_VERSION)
+    db.add(question); db.flush()
+    ticket = ReviewTicket(question_id=question.id, student_id=student.id, school_id=student.school_id, risk_codes=["STUDENT_REQUEST"])
+    db.add(ticket); db.commit()
+    return {"id": ticket.id, "status": ticket.status}
 
 
 @router.post("/questions", response_model=QuestionCreated)

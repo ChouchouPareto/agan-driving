@@ -11,7 +11,7 @@ import * as api from "./api";
 import { AnswerCard } from "./answer-card";
 import { OCRWorkspace } from "@/features/ocr/ocr-workspace";
 
-type LocalExchange = { id: string; user: string; assistant: string; intent: string; destination?: string };
+type LocalExchange = { id: string; user: string; assistant: string; intent: string; destination?: string; created_at?: string; handoff_available?: boolean };
 type KnowledgeStatus = { connected: boolean; version: string | null; item_count: number; scope: string; is_preview: boolean; notice: string };
 const learnerVoices = [
   { label: "我的驾驶证怎么还没有拿出来？", prompt: "我的驾驶证怎么还没有拿出来？" },
@@ -100,6 +100,7 @@ export function AskWorkspace() {
   async function loadConversation(id: string) {
     const detail = await api.getConversation(id);
     setMessages(detail.questions);
+    setLocalExchanges(detail.turns.map(turn => ({ ...turn, destination: turn.destination ?? undefined })));
     rememberConversation(detail.id);
   }
 
@@ -192,7 +193,7 @@ export function AskWorkspace() {
         setPendingUser(""); setStatus(""); router.push(`${dispatch.destination}${separator}license=${licenseType}&subject=${subject}`); return;
       }
       if (dispatch.action === "RESPOND" || dispatch.action === "SUGGEST_NAVIGATION") {
-        setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent, destination: dispatch.destination ?? undefined }]);
+        setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent, destination: dispatch.destination ?? undefined, created_at: new Date().toISOString(), handoff_available: dispatch.handoff_available }]);
         syncConversationUrl(dispatch.conversation_id);
         setPendingUser(""); setStatus(""); return;
       }
@@ -261,16 +262,37 @@ export function AskWorkspace() {
   }
 
   const hasConversation = messages.length > 0 || localExchanges.length > 0 || Boolean(pendingUser || status || error);
+  const timeline = [
+    ...messages.map(question => ({ kind: "question" as const, question, at: question.created_at ?? "" })),
+    ...localExchanges.map(item => ({ kind: "chat" as const, item, at: item.created_at ?? "" })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
+
+  async function confirmHandoff() {
+    if (isBusy) return;
+    setStatus("正在提交给校长…"); setError("");
+    try {
+      const ticket = await api.handoffConversation(conversationId);
+      router.push(`/tickets/${ticket.id}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "提交失败，请重试");
+    } finally { setStatus(""); }
+  }
 
   return <div className={`chatPage ${hasConversation ? "hasConversation" : "isWelcome"}`}>
     <section ref={chatStream} className="chatStream" aria-label="与超级驾陪的对话" aria-busy={isBusy}>
       {!hasConversation && <div className="welcomePanel"><span className="welcomeEyebrow">C1 科目一 · AI 学习伙伴</span><h1>Hi，我是超级驾陪</h1><p>比起只告诉你答案，我更想陪你真正看懂。今天想先学什么？</p>{knowledge && <div className={`knowledgeConnection ${knowledge.connected ? "connected" : ""}`} title={knowledge.notice}><Database aria-hidden="true"/><span>{knowledge.connected ? `已连接 ${knowledge.item_count.toLocaleString("zh-CN")} 道 ${knowledge.scope} 知识库` : "知识库暂未连接"}</span>{knowledge.is_preview && knowledge.connected && <b>预览版</b>}</div>}<section className="homePrompts" aria-label="开始学习"><button className="homePrompt compact" onClick={() => setText("给我出 5 道科目一题")}><strong>给我出 5 道科目一题</strong><ArrowRight aria-hidden="true"/></button><div className="learnerVoice" aria-label="学员常见心声" onMouseEnter={() => setVoicePaused(true)} onMouseLeave={() => setVoicePaused(false)} onFocusCapture={() => setVoicePaused(true)} onBlurCapture={() => setVoicePaused(false)}><button key={voiceIndex} onClick={() => setText(learnerVoices[voiceIndex].prompt)}><strong>{learnerVoices[voiceIndex].label}</strong><ArrowRight aria-hidden="true"/></button></div><button className="homePrompt compact" onClick={() => setText("复习一下我的错题")}><strong>复习一下我的错题</strong><ArrowRight aria-hidden="true"/></button></section></div>}
-      {messages.map(question => <div className="conversationTurn" key={question.id}>
+      {timeline.map(entry => {
+        if (entry.kind === "question") {
+          const question = entry.question;
+          return <div className="conversationTurn" key={question.id}>
         <div className="userMessage"><p>{question.text}</p></div>
         {question.intent === "FOLLOW_UP" && <span className="intentBadge">已结合上一题理解</span>}
         {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} resolved={resolvedAnswerIds.has(question.answer.id)} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
-      </div>)}
-      {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级驾陪 · 学车伙伴</span><p>{item.assistant}</p>{item.destination && <button className="navigationSuggestion" onClick={() => { const separator = item.destination!.includes("?") ? "&" : "?"; router.push(`${item.destination}${separator}license=${licenseType}&subject=${subject}`); }}>{item.intent === "MOCK_EXAM" ? "开始模拟考试" : item.intent === "WRONG_QUESTIONS" ? "打开错题本" : item.intent === "FAVORITES" ? "查看收藏题" : "开始刷题"}<ArrowRight aria-hidden="true" size={17}/></button>}</div></div></div>)}
+      </div>;
+        }
+        const item = entry.item;
+        return <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级驾陪 · 学车伙伴</span><p>{item.assistant}</p>{item.destination && <button className="navigationSuggestion" onClick={() => { const separator = item.destination!.includes("?") ? "&" : "?"; router.push(`${item.destination}${separator}license=${licenseType}&subject=${subject}`); }}>{item.intent === "MOCK_EXAM" ? "开始模拟考试" : item.intent === "WRONG_QUESTIONS" ? "打开错题本" : item.intent === "FAVORITES" ? "查看收藏题" : "开始刷题"}<ArrowRight aria-hidden="true" size={17}/></button>}{item.handoff_available && <button className="navigationSuggestion" disabled={isBusy} onClick={confirmHandoff}>确认提交给校长<ArrowRight aria-hidden="true" size={17}/></button>}</div></div></div>;
+      })}
       {pendingUser && <div className="conversationTurn pendingTurn"><div className="userMessage"><p>{pendingUser}</p></div></div>}
       {status && <div className="assistantMessage compact" aria-live="polite"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div className="status"><span className="dot"/>{status}</div></div>}
       {error && <div className="chatError" role="alert">{error}</div>}
