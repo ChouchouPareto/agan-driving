@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 async function enterAsStudent(page: import("@playwright/test").Page) {
   await page.goto("/enter");
+  await page.getByLabel("邀请码").fill("E2E-LEARNER");
   await page.getByRole("button", { name: "进入服务" }).click();
   await expect(page).toHaveURL(/\/ask/);
 }
@@ -41,6 +42,22 @@ test("关键断点和减少动画模式下布局稳定", async ({ page }) => {
   }
 });
 
+test("聊天刷新恢复，确认后提交给校长", async ({ page }) => {
+  await enterAsStudent(page);
+  await ask(page, "我不想刷题");
+  await expect(page.locator(".assistantMessage p")).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".userMessage").getByText("我不想刷题", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "开始刷题", exact: true })).toHaveCount(0);
+  await ask(page, "帮我转人工，联系校长");
+  const confirm = page.getByRole("button", { name: "确认提交给校长" });
+  await expect(confirm).toBeVisible();
+  await expect(page).toHaveURL(/\/ask/);
+  await confirm.click();
+  await expect(page).toHaveURL(/\/tickets\//);
+  await expect(page.getByText(/学员确认提交的对话/)).toBeVisible();
+});
+
 test("图片题目可识别、确认并进入可信问答", async ({ page }) => {
   await enterAsStudent(page);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
@@ -56,8 +73,9 @@ test("校长认领回复后由学员确认关闭", async ({ browser }) => {
   const studentPage = await student.newPage();
   await enterAsStudent(studentPage);
   await ask(studentPage, "驾驶机动车遇到宇宙飞船时应该让谁先行？");
-  await expect(studentPage.getByRole("button", { name: "答案有问题" })).toBeVisible();
-  await studentPage.getByRole("button", { name: "答案有问题" }).click();
+  const reviewButton = studentPage.getByRole("button", { name: /请校长核查|答案有问题/ });
+  await expect(reviewButton).toBeVisible();
+  await reviewButton.click();
   const detailLink = studentPage.getByRole("link", { name: /查看处理详情/ });
   await expect(detailLink).toBeVisible();
   const href = await detailLink.getAttribute("href");
@@ -66,6 +84,7 @@ test("校长认领回复后由学员确认关闭", async ({ browser }) => {
   const staff = await browser.newContext();
   const staffPage = await staff.newPage();
   await staffPage.goto("/staff/enter");
+  await staffPage.getByLabel("工作台邀请码").fill("E2E-STAFF");
   await staffPage.getByRole("button", { name: "进入校长工作台" }).click();
   await expect(staffPage).toHaveURL(/staff\/tickets$/);
   await staffPage.getByRole("link", { name: /查看并处理/ }).first().click();

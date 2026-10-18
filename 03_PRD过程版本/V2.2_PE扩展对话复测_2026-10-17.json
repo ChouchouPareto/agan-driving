@@ -1,0 +1,610 @@
+{
+  "environment": "local-real-model-isolated-db",
+  "knowledge_scope": "active-school",
+  "prompt_version": "pe-v1.4-context-tools",
+  "results": [
+    {
+      "scenario": "holdout_negative_and_emotion",
+      "input": "今天不练题，聊聊教练态度吧",
+      "http_status": 200,
+      "expected_intents": [
+        "EMOTIONAL_SUPPORT"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "99eaa313-295c-49e0-bbea-9079f4960330",
+        "intent": "EMOTIONAL_SUPPORT",
+        "skill_id": "companion_chat",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "好，今天不碰题。教练具体做了什么或说了什么让你心里堵得慌？你慢慢说，我听着。",
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.7-plus",
+        "fallback": false,
+        "tokens": 2288
+      },
+      "seconds": 5.506,
+      "model_calls": [
+        {
+          "model": "qwen3.7-plus",
+          "message_count": 2,
+          "context": {
+            "current_intent": "EMOTIONAL_SUPPORT",
+            "student_context": {
+              "region": "今天不练题",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "total_tokens": 1105,
+            "completion_tokens": 37,
+            "prompt_tokens": 1068,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "text_tokens": 1068
+            }
+          },
+          "seconds": 2.994
+        },
+        {
+          "model": "qwen3.7-plus",
+          "message_count": 4,
+          "status": 200,
+          "usage": {
+            "total_tokens": 1183,
+            "completion_tokens": 26,
+            "prompt_tokens": 1157,
+            "prompt_tokens_details": {
+              "cached_tokens": 512,
+              "text_tokens": 1157
+            }
+          },
+          "seconds": 2.486
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_negative_and_emotion",
+      "input": "我已经很努力了，他还是只会说我",
+      "http_status": 200,
+      "expected_intents": [
+        "EMOTIONAL_SUPPORT",
+        "CHITCHAT"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "99eaa313-295c-49e0-bbea-9079f4960330",
+        "intent": "EMOTIONAL_SUPPORT",
+        "skill_id": "companion_chat",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "这种被全盘否定的感觉确实很磨人，尤其在你已经投入精力的时候。他具体是怎么说的？是盯着某个细节不放，还是语气让你觉得不舒服？你接着说，我在听。",
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.7-plus",
+        "fallback": false,
+        "tokens": 1155
+      },
+      "seconds": 4.15,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {},
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 434,
+            "completion_tokens": 41,
+            "total_tokens": 475,
+            "completion_tokens_details": {
+              "text_tokens": 41
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 434
+            }
+          },
+          "seconds": 1.574
+        },
+        {
+          "model": "qwen3.7-plus",
+          "message_count": 4,
+          "context": {
+            "current_intent": "EMOTIONAL_SUPPORT",
+            "student_context": {
+              "region": "今天不练题",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "total_tokens": 1155,
+            "completion_tokens": 43,
+            "prompt_tokens": 1112,
+            "prompt_tokens_details": {
+              "cached_tokens": 512,
+              "text_tokens": 1112
+            }
+          },
+          "seconds": 2.556
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_negative_and_emotion",
+      "input": "别跳转收藏页，先听我说",
+      "http_status": 200,
+      "expected_intents": [
+        "EMOTIONAL_SUPPORT",
+        "CHITCHAT"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "99eaa313-295c-49e0-bbea-9079f4960330",
+        "intent": "EMOTIONAL_SUPPORT",
+        "skill_id": "companion_chat",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "好，我不跳。你接着说。",
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.7-plus",
+        "fallback": false,
+        "tokens": 1129
+      },
+      "seconds": 2.198,
+      "model_calls": [
+        {
+          "model": "qwen3.7-plus",
+          "message_count": 6,
+          "context": {
+            "current_intent": "EMOTIONAL_SUPPORT",
+            "student_context": {
+              "region": "别跳转收藏页",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "total_tokens": 1129,
+            "completion_tokens": 9,
+            "prompt_tokens": 1120,
+            "prompt_tokens_details": {
+              "cached_tokens": 512,
+              "text_tokens": 1120
+            }
+          },
+          "seconds": 2.183
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_tools",
+      "input": "我昨天刷题正确率很低",
+      "http_status": 200,
+      "expected_intents": [
+        "LEARNING_PROGRESS",
+        "EMOTIONAL_SUPPORT"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "fb998478-f109-46d5-80d3-114d906d5870",
+        "intent": "LEARNING_PROGRESS",
+        "skill_id": "learning_diagnosis",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "刷题正确率低确实挺让人挫败的，尤其是刚开始练的时候。不过别太往心里去，这通常是建立新认知的必经过程，大脑需要时间来适应这些新的规则逻辑。\n\n既然你昨天刚刷过，今天要不要试着把那些做错的题重新看一遍？不用急着追求数量，弄懂一个知识点比盲目刷十道题更有用。\n\n查过了，目前还没有你的练习记录，暂时算不出正确率和薄弱点。",
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 1081
+      },
+      "seconds": 2.316,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {
+            "current_intent": "LEARNING_PROGRESS",
+            "student_context": {
+              "region": "全国",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 1004,
+            "completion_tokens": 77,
+            "total_tokens": 1081,
+            "completion_tokens_details": {
+              "text_tokens": 77
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 1004
+            }
+          },
+          "seconds": 2.299
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_tools",
+      "input": "我想请校长帮忙安排教练",
+      "http_status": 200,
+      "expected_intents": [
+        "HUMAN_HELP",
+        "SCHOOL_SERVICE"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "fb998478-f109-46d5-80d3-114d906d5870",
+        "intent": "HUMAN_HELP",
+        "skill_id": "school_service",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "想请校长帮忙安排教练，这确实是个比较具体的需求。\n\n目前我这边还没有收到你提交的申请，所以还没法直接转达给校长。你可以看看对话界面下方有没有“确认提交给校长”的按钮，点进去填写一下具体情况，这样校长才能看到并处理。",
+        "handoff_available": true,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 1271
+      },
+      "seconds": 1.926,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 4,
+          "context": {
+            "current_intent": "HUMAN_HELP",
+            "student_context": {
+              "region": "全国",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 1210,
+            "completion_tokens": 61,
+            "total_tokens": 1271,
+            "completion_tokens_details": {
+              "text_tokens": 61
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 1210
+            }
+          },
+          "seconds": 1.911
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_tools",
+      "input": "报名需要带我的身份证吗",
+      "http_status": 200,
+      "expected_intents": [
+        "SCHOOL_SERVICE",
+        "LEARNING_PROCESS"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "fb998478-f109-46d5-80d3-114d906d5870",
+        "intent": "SCHOOL_SERVICE",
+        "skill_id": "school_service",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "报名通常是需要带身份证的，这是为了核实身份和建立档案。不过具体要准备哪些材料，各地驾校的要求可能会有细微差别。\n\n建议你点击下方的“确认提交给校长”按钮，把这个问题发给校长。让校长根据你的具体情况看看需要带什么，这样最稳妥。",
+        "handoff_available": true,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 1346
+      },
+      "seconds": 1.927,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 6,
+          "context": {
+            "current_intent": "SCHOOL_SERVICE",
+            "student_context": {
+              "region": "全国",
+              "license_type": "C1",
+              "subject": "subject-1"
+            },
+            "authoritative_evidence": []
+          },
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 1287,
+            "completion_tokens": 59,
+            "total_tokens": 1346,
+            "completion_tokens_details": {
+              "text_tokens": 59
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 1287
+            }
+          },
+          "seconds": 1.917
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_theory",
+      "input": "驾驶机动车通过没有交通信号的交叉路口怎样行驶？",
+      "http_status": 200,
+      "expected_intents": [
+        "QUESTION_ANSWER"
+      ],
+      "expected_action": "ANSWER",
+      "response": {
+        "conversation_id": "dd30cace-164d-4d21-9ff6-dac767bf9491",
+        "intent": "QUESTION_ANSWER",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "cd180463-3a54-44d5-885c-4b4964cf9bc2",
+        "destination": null,
+        "assistant_message": null,
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "answer": {
+        "id": "28727895-7e98-4ad6-a397-947bf8f5bd10",
+        "direct_answer": "A. 减速慢行",
+        "short_reason": "路口路况复杂，减速慢行是确保安全通过的核心要求。",
+        "detail": "在没有交通信号灯控制的交叉路口，车辆和行人的通行权没有明确的信号指示，存在较多的视线盲区和潜在冲突点。因此，驾驶机动车时必须降低车速，仔细观察四周情况，确认安全后再通过，以避免发生碰撞事故。",
+        "common_mistake": "容易误以为可以正常速度通过，或者错误地认为需要停车让行（除非有停车标志）。",
+        "evidence": [
+          {
+            "source_type": "question_bank",
+            "source_id": "fed162e3-7b6c-4a7c-bc9a-f87b10895337",
+            "title": "科目一标准题库",
+            "version": "research-c1-text-preview-20260828",
+            "excerpt": "没有交通信号灯的路口路况复杂，应减速慢行。"
+          }
+        ],
+        "route": "standard_question",
+        "risk_codes": []
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 503,
+        "error": null
+      },
+      "seconds": 2.723,
+      "model_calls": [
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {},
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 397,
+            "completion_tokens": 106,
+            "total_tokens": 503,
+            "completion_tokens_details": {
+              "text_tokens": 106
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 397
+            }
+          },
+          "seconds": 2.65
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_theory",
+      "input": "换个说法",
+      "http_status": 200,
+      "expected_intents": [
+        "FOLLOW_UP"
+      ],
+      "expected_action": "ANSWER",
+      "response": {
+        "conversation_id": "dd30cace-164d-4d21-9ff6-dac767bf9491",
+        "intent": "FOLLOW_UP",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "1ed332dc-1a68-4eba-8f42-9c83d4183e50",
+        "destination": null,
+        "assistant_message": null,
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "answer": {
+        "id": "2cbd6396-b103-45f4-8cb7-4a35634b806e",
+        "direct_answer": "A. 减速慢行",
+        "short_reason": "无信号路口路况不明，需减速观察以确保安全。",
+        "detail": "可以把没有信号灯的路口想象成一个“盲盒”，你不知道左右两边会不会突然冲出来车或人。这时候如果保持原速甚至加速，就像闭着眼睛走路，风险极大。正确的做法是先把脚放在刹车上，把速度降下来，给自己留出足够的反应时间和刹车距离，确认安全后再通过。这就好比进一个陌生的房间，先探头看看再迈步，而不是直接冲进去。",
+        "common_mistake": "误以为没有信号灯就可以加速抢行，或者认为只要自己没违规就不用减速，忽略了潜在的交通冲突风险。",
+        "evidence": [
+          {
+            "source_type": "question_bank",
+            "source_id": "fed162e3-7b6c-4a7c-bc9a-f87b10895337",
+            "title": "科目一标准题库",
+            "version": "research-c1-text-preview-20260828",
+            "excerpt": "没有交通信号灯的路口路况复杂，应减速慢行。"
+          }
+        ],
+        "route": "standard_question",
+        "risk_codes": []
+      },
+      "generation": {
+        "model": "qwen3.7-plus",
+        "fallback": false,
+        "tokens": 551,
+        "error": null
+      },
+      "seconds": 4.966,
+      "model_calls": [
+        {
+          "model": "qwen3.7-plus",
+          "message_count": 2,
+          "context": {},
+          "status": 200,
+          "usage": {
+            "total_tokens": 551,
+            "completion_tokens": 147,
+            "prompt_tokens": 404,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "text_tokens": 404
+            }
+          },
+          "seconds": 4.916
+        }
+      ],
+      "route_pass": true
+    },
+    {
+      "scenario": "holdout_theory",
+      "input": "给个酒驾的口诀，不是刚才路口那题",
+      "http_status": 200,
+      "expected_intents": [
+        "MNEMONIC_HELP"
+      ],
+      "expected_action": "RESPOND",
+      "response": {
+        "conversation_id": "dd30cace-164d-4d21-9ff6-dac767bf9491",
+        "intent": "MNEMONIC_HELP",
+        "skill_id": "mnemonic_coach",
+        "action": "RESPOND",
+        "question_id": null,
+        "destination": null,
+        "assistant_message": "记这句就好：喝酒不开车，开车不喝酒。\n这是帮助回想规则的口诀，做题还要看清适用条件。",
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "generation": {
+        "model": "reviewed-mnemonic",
+        "fallback": false,
+        "tokens": 0
+      },
+      "seconds": 0.012,
+      "model_calls": [],
+      "route_pass": true
+    },
+    {
+      "scenario": "rag_paraphrase",
+      "input": "机动车在没有红绿灯的交叉路口，应当怎样通过？",
+      "http_status": 200,
+      "expected_intents": [
+        "QUESTION_ANSWER"
+      ],
+      "expected_action": "ANSWER",
+      "response": {
+        "conversation_id": "19899378-a835-4476-957c-17ecbeaf57be",
+        "intent": "QUESTION_ANSWER",
+        "skill_id": "theory_tutor",
+        "action": "ANSWER",
+        "question_id": "f2b9fc1a-b52e-40d7-91fd-5c5b97715650",
+        "destination": null,
+        "assistant_message": null,
+        "handoff_available": false,
+        "prompt_version": "pe-v1.4-context-tools"
+      },
+      "answer": {
+        "id": "c10f7615-9d8f-4dc7-a611-021c81dd2c6f",
+        "direct_answer": "A. 减速慢行",
+        "short_reason": "路口路况复杂，减速慢行是确保安全通过的基本操作。",
+        "detail": "在没有红绿灯的交叉路口，由于缺乏交通信号灯的指挥，车辆和行人的通行顺序需要依靠驾驶员的观察和判断。此时路况相对复杂，存在视线盲区或突发情况的风险。因此，正确的做法是提前减速，观察四周环境，确认安全后再缓慢通过，以便随时应对可能出现的其他车辆或行人。",
+        "common_mistake": "容易误以为只要没有红灯就可以加速通过，或者忽略观察周围动态直接直行，这极易引发交通事故。",
+        "evidence": [
+          {
+            "source_type": "question_bank",
+            "source_id": "fed162e3-7b6c-4a7c-bc9a-f87b10895337",
+            "title": "科目一标准题库",
+            "version": "research-c1-text-preview-20260828",
+            "excerpt": "没有交通信号灯的路口路况复杂，应减速慢行。"
+          }
+        ],
+        "route": "standard_question",
+        "risk_codes": []
+      },
+      "generation": {
+        "model": "qwen3.6-flash",
+        "fallback": false,
+        "tokens": 524,
+        "error": null
+      },
+      "seconds": 5.319,
+      "model_calls": [
+        {
+          "model": "text-embedding-v4",
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 15,
+            "total_tokens": 15
+          },
+          "seconds": 1.06
+        },
+        {
+          "model": "qwen3-rerank",
+          "status": 200,
+          "usage": {
+            "total_tokens": 1699
+          },
+          "seconds": 1.05
+        },
+        {
+          "model": "qwen3.6-flash",
+          "message_count": 2,
+          "context": {},
+          "status": 200,
+          "usage": {
+            "prompt_tokens": 398,
+            "completion_tokens": 126,
+            "total_tokens": 524,
+            "completion_tokens_details": {
+              "text_tokens": 126
+            },
+            "prompt_tokens_details": {
+              "text_tokens": 398
+            }
+          },
+          "seconds": 2.772
+        }
+      ],
+      "route_pass": true
+    }
+  ]
+}

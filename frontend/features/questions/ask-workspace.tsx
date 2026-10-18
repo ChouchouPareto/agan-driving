@@ -11,7 +11,7 @@ import * as api from "./api";
 import { AnswerCard } from "./answer-card";
 import { OCRWorkspace } from "@/features/ocr/ocr-workspace";
 
-type LocalExchange = { id: string; user: string; assistant: string; intent: string; destination?: string };
+type LocalExchange = { id: string; user: string; assistant: string; intent: string; destination?: string; created_at?: string; handoff_available?: boolean };
 type KnowledgeStatus = { connected: boolean; version: string | null; item_count: number; scope: string; is_preview: boolean; notice: string };
 const learnerVoices = [
   { label: "我的驾驶证怎么还没有拿出来？", prompt: "我的驾驶证怎么还没有拿出来？" },
@@ -100,6 +100,7 @@ export function AskWorkspace() {
   async function loadConversation(id: string) {
     const detail = await api.getConversation(id);
     setMessages(detail.questions);
+    setLocalExchanges(detail.turns.map(turn => ({ ...turn, destination: turn.destination ?? undefined })));
     rememberConversation(detail.id);
   }
 
@@ -192,7 +193,7 @@ export function AskWorkspace() {
         setPendingUser(""); setStatus(""); router.push(`${dispatch.destination}${separator}license=${licenseType}&subject=${subject}`); return;
       }
       if (dispatch.action === "RESPOND" || dispatch.action === "SUGGEST_NAVIGATION") {
-        setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent, destination: dispatch.destination ?? undefined }]);
+        setLocalExchanges(items => [...items, { id: crypto.randomUUID(), user: command, assistant: dispatch.assistant_message ?? "", intent: dispatch.intent, destination: dispatch.destination ?? undefined, created_at: new Date().toISOString(), handoff_available: dispatch.handoff_available }]);
         syncConversationUrl(dispatch.conversation_id);
         setPendingUser(""); setStatus(""); return;
       }
@@ -261,16 +262,37 @@ export function AskWorkspace() {
   }
 
   const hasConversation = messages.length > 0 || localExchanges.length > 0 || Boolean(pendingUser || status || error);
+  const timeline = [
+    ...messages.map(question => ({ kind: "question" as const, question, at: question.created_at ?? "" })),
+    ...localExchanges.map(item => ({ kind: "chat" as const, item, at: item.created_at ?? "" })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
+
+  async function confirmHandoff() {
+    if (isBusy) return;
+    setStatus("正在提交给校长…"); setError("");
+    try {
+      const ticket = await api.handoffConversation(conversationId);
+      router.push(`/tickets/${ticket.id}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "提交失败，请重试");
+    } finally { setStatus(""); }
+  }
 
   return <div className={`chatPage ${hasConversation ? "hasConversation" : "isWelcome"}`}>
     <section ref={chatStream} className="chatStream" aria-label="与超级驾陪的对话" aria-busy={isBusy}>
       {!hasConversation && <div className="welcomePanel"><span className="welcomeEyebrow">C1 科目一 · AI 学习伙伴</span><h1>Hi，我是超级驾陪</h1><p>比起只告诉你答案，我更想陪你真正看懂。今天想先学什么？</p>{knowledge && <div className={`knowledgeConnection ${knowledge.connected ? "connected" : ""}`} title={knowledge.notice}><Database aria-hidden="true"/><span>{knowledge.connected ? `已连接 ${knowledge.item_count.toLocaleString("zh-CN")} 道 ${knowledge.scope} 知识库` : "知识库暂未连接"}</span>{knowledge.is_preview && knowledge.connected && <b>预览版</b>}</div>}<section className="homePrompts" aria-label="开始学习"><button className="homePrompt compact" onClick={() => setText("给我出 5 道科目一题")}><strong>给我出 5 道科目一题</strong><ArrowRight aria-hidden="true"/></button><div className="learnerVoice" aria-label="学员常见心声" onMouseEnter={() => setVoicePaused(true)} onMouseLeave={() => setVoicePaused(false)} onFocusCapture={() => setVoicePaused(true)} onBlurCapture={() => setVoicePaused(false)}><button key={voiceIndex} onClick={() => setText(learnerVoices[voiceIndex].prompt)}><strong>{learnerVoices[voiceIndex].label}</strong><ArrowRight aria-hidden="true"/></button></div><button className="homePrompt compact" onClick={() => setText("复习一下我的错题")}><strong>复习一下我的错题</strong><ArrowRight aria-hidden="true"/></button></section></div>}
-      {messages.map(question => <div className="conversationTurn" key={question.id}>
+      {timeline.map(entry => {
+        if (entry.kind === "question") {
+          const question = entry.question;
+          return <div className="conversationTurn" key={question.id}>
         <div className="userMessage"><p>{question.text}</p></div>
         {question.intent === "FOLLOW_UP" && <span className="intentBadge">已结合上一题理解</span>}
         {question.answer && <AnswerCard answer={question.answer} ticket={question.ticket} busy={isBusy} resolved={resolvedAnswerIds.has(question.answer.id)} onFeedback={type => feedback(question, type)} onTicket={() => createReviewTicket(question)}/>}
-      </div>)}
-      {localExchanges.map(item => <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级驾陪 · 学车伙伴</span><p>{item.assistant}</p>{item.destination && <button className="navigationSuggestion" onClick={() => { const separator = item.destination!.includes("?") ? "&" : "?"; router.push(`${item.destination}${separator}license=${licenseType}&subject=${subject}`); }}>{item.intent === "MOCK_EXAM" ? "开始模拟考试" : item.intent === "WRONG_QUESTIONS" ? "打开错题本" : item.intent === "FAVORITES" ? "查看收藏题" : "开始刷题"}<ArrowRight aria-hidden="true" size={17}/></button>}</div></div></div>)}
+      </div>;
+        }
+        const item = entry.item;
+        return <div className="conversationTurn" key={item.id}><div className="userMessage"><p>{item.user}</p></div><div className="assistantMessage"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div><span className="messageAuthor">超级驾陪 · 学车伙伴</span><p>{item.assistant}</p>{item.destination && <button className="navigationSuggestion" onClick={() => { const separator = item.destination!.includes("?") ? "&" : "?"; router.push(`${item.destination}${separator}license=${licenseType}&subject=${subject}`); }}>{item.intent === "MOCK_EXAM" ? "开始模拟考试" : item.intent === "WRONG_QUESTIONS" ? "打开错题本" : item.intent === "FAVORITES" ? "查看收藏题" : "开始刷题"}<ArrowRight aria-hidden="true" size={17}/></button>}{item.handoff_available && <button className="navigationSuggestion" disabled={isBusy} onClick={confirmHandoff}>确认提交给校长<ArrowRight aria-hidden="true" size={17}/></button>}</div></div></div>;
+      })}
       {pendingUser && <div className="conversationTurn pendingTurn"><div className="userMessage"><p>{pendingUser}</p></div></div>}
       {status && <div className="assistantMessage compact" aria-live="polite"><span className="assistantAvatar" aria-hidden="true"><Sparkles size={16}/></span><div className="status"><span className="dot"/>{status}</div></div>}
       {error && <div className="chatError" role="alert">{error}</div>}
@@ -293,7 +315,7 @@ export function AskWorkspace() {
         </article> : <div className="cardPracticeList">{cardPracticeScenarios.map((scenario, index) => <button type="button" key={scenario.title} onClick={() => { setSelectedCardScenario(scenario); setCardVideoPlaying(false); }}><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.title}</strong><ArrowRight aria-hidden="true"/></button>)}</div>}
       </section>}
       <nav className="quickTools" aria-label="快捷学习入口"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><BookOpenCheck aria-hidden="true"/>顺序刷题</Link><button type="button" className={cardPracticeOpen ? "active" : ""} aria-expanded={cardPracticeOpen} onClick={() => { setToolsOpen(false); setSelectedCardScenario(null); setCardPracticeOpen(value => !value); }}><Layers3 aria-hidden="true"/>卡片刷题</button><Link href={`/exam?license=${licenseType}&subject=${subject}`}><CheckCircle2 aria-hidden="true"/>模拟考试</Link><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><History aria-hidden="true"/>错题本</Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><Heart aria-hidden="true"/>收藏题</Link><button type="button" onClick={openImagePicker}><ImageUp aria-hidden="true"/>拍题问 AI</button></nav>
-      <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级驾陪发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="发消息或按住说话" maxLength={300}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/300</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
+      <form className="chatInputBox" onSubmit={ask}><label className="srOnly" htmlFor="question">给超级驾陪发消息</label><textarea id="question" value={text} onChange={event => setText(event.target.value)} placeholder="输入学车问题…" maxLength={300}/><div className="chatInputActions"><button className="composerIconButton" type="button" aria-label={toolsOpen ? "收起学习工具" : "展开学习工具"} aria-expanded={toolsOpen} onClick={() => setToolsOpen(value => !value)}>{toolsOpen ? <X aria-hidden="true"/> : <Plus aria-hidden="true"/>}</button><OCRWorkspace initialTaskId={savedOCRTaskId} onTaskCreated={trackOCRTask} onQuestionCreated={useOCRQuestion}/><span className="characterCount">{text.length}/300</span><button className="chatSendButton" type="submit" aria-label="发送消息" disabled={isBusy || !text.trim()}>{isBusy ? <LoaderCircle aria-hidden="true" className="spin" size={20}/> : <Send aria-hidden="true" size={20}/>}</button></div></form>
       {toolsOpen && <div className="mobileToolSheet" aria-label="学习工具"><Link href={`/practice?license=${licenseType}&subject=${subject}`}><span><BookOpenCheck aria-hidden="true"/></span><strong>顺序刷题</strong><small>按题库持续练习</small></Link><button type="button" onClick={() => { setToolsOpen(false); setCardPracticeOpen(true); }}><span><Layers3 aria-hidden="true"/></span><strong>卡片刷题</strong><small>按场景看图理解</small></button><Link href={`/practice?mode=wrong&license=${licenseType}&subject=${subject}`}><span><History aria-hidden="true"/></span><strong>错题本</strong><small>集中复习薄弱点</small></Link><Link href={`/practice?mode=favorites&license=${licenseType}&subject=${subject}`}><span><Heart aria-hidden="true"/></span><strong>收藏题</strong><small>回看重点题目</small></Link><button type="button" onClick={openImagePicker}><span><Camera aria-hidden="true"/></span><strong>拍题提问</strong><small>拍照或选择题图</small></button><button type="button" onClick={() => { setText("我有一道科目一题不理解"); setToolsOpen(false); }}><span><MessageCircleQuestion aria-hidden="true"/></span><strong>AI 讲题</strong><small>换一种方式讲懂</small></button></div>}
       <p className="aiDisclaimer">内容由 AI 生成，科目一结论以当前题库依据为准</p>
     </section>

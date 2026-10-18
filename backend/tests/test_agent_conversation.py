@@ -3,6 +3,7 @@ import re
 
 from app.core.config import get_settings
 from app.skills import conversation as conversation_service
+from app.pe.prompts import PROMPT_VERSION
 
 
 def done(response):
@@ -56,7 +57,7 @@ def test_agent_follow_up_inherits_previous_question(client, auth):
     conversation = client.get(f"/api/v1/conversations/{first['conversation_id']}", headers=auth).json()
     assert len(conversation["questions"]) == 2
     assert conversation["questions"][1]["resolved_text"].startswith(conversation["questions"][0]["text"])
-    assert conversation["questions"][1]["prompt_version"] == "pe-v1.3-human-confirm"
+    assert conversation["questions"][1]["prompt_version"] == PROMPT_VERSION
 
 
 def test_why_about_coach_does_not_inherit_previous_question(client, auth):

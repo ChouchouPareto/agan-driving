@@ -1,5 +1,7 @@
 import json
+import os
 import re
+import time
 
 import httpx
 from app.services import AIService, QUESTION_BANK
@@ -38,7 +40,7 @@ def test_unknown_question_refuses_and_creates_ticket(client, auth):
     ticket = client.post("/api/v1/review-tickets", headers=auth, json={"question_id": question["id"], "risk_codes": payload["risk_codes"]})
     assert ticket.status_code == 200
     status = client.get(f"/api/v1/review-tickets/{ticket.json()['id']}", headers=auth).json()
-    assert status["label"] == "校长在摸鱼"
+    assert status["label"] == "等待校长处理"
     assert "2小时" in status["sla"]
 
 
@@ -54,6 +56,26 @@ def test_second_explanation_keeps_standard_answer(client, auth):
 def test_invalid_session_cannot_read_conversation(client, auth):
     conversation = client.post("/api/v1/conversations", headers=auth, json={}).json()
     response = client.get(f"/api/v1/conversations/{conversation['id']}", headers={"Authorization": "Bearer invalid"})
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_SESSION"
+
+
+def test_conversation_history_lists_latest_user_topic(client, auth):
+    conversation = client.post("/api/v1/conversations", headers=auth, json={}).json()
+    client.post("/api/v1/questions", headers=auth, json={"conversation_id": conversation["id"], "text": "帮我复习无信号灯路口让行"})
+    response = client.get("/api/v1/conversations", headers=auth)
+    assert response.status_code == 200
+    assert response.json()["items"][0]["id"] == conversation["id"]
+    assert "无信号灯路口" in response.json()["items"][0]["title"]
+
+
+def test_expired_signed_session_is_rejected(client, monkeypatch):
+    real_time = time.time
+    monkeypatch.setattr("app.services.time.time", lambda: real_time() - 9 * 3600)
+    login = client.post("/api/v1/auth/invitations/verify", json={"code": os.environ["LEARNER_INVITATION_CODE"]})
+    token = login.json()["access_token"]
+    monkeypatch.setattr("app.services.time.time", real_time)
+    response = client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "INVALID_SESSION"
 

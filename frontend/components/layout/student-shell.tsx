@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BookOpenCheck, Check, ClipboardCheck, Heart, History, Menu, MessageSquarePlus, Pencil, Search, Settings, Sparkles, X } from "lucide-react";
+import { BookOpenCheck, Check, ClipboardCheck, Heart, History, LogOut, Menu, MessageSquarePlus, Pencil, Search, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Brand } from "./brand";
 import { learningStage, LICENSE_CATEGORIES, licenseCategory } from "@/lib/learning-catalog";
+import { getConversations } from "@/features/questions/api";
 
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<{ id: string; title: string; preview: string; updated_at: string }[]>([]);
+  const [historyState, setHistoryState] = useState<"idle" | "loading" | "error">("idle");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -18,6 +22,15 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   const currentLicense = licenseCategory(selectedLicense);
   const currentStage = learningStage(selectedLicense, selectedSubject);
   const contextQuery = `license=${currentLicense.code}&subject=${currentStage.id}`;
+
+  async function toggleHistory() {
+    const next = !historyOpen;
+    setHistoryOpen(next);
+    if (!next) return;
+    setHistoryState("loading");
+    try { setHistory((await getConversations()).items); setHistoryState("idle"); }
+    catch { setHistoryState("error"); }
+  }
 
   async function updateLearningContext(license: string, subject: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -39,6 +52,12 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     router.push(`/ask?new=1&${contextQuery}`);
   }
 
+  async function signOut() {
+    await fetch("/api/session", { method: "DELETE" }).catch(() => undefined);
+    sessionStorage.clear();
+    router.replace("/enter");
+  }
+
   return <div className="shell">
     <header className="topbar">
       <button className="topbarIcon" type="button" aria-label="打开导航" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu aria-hidden="true"/></button>
@@ -49,8 +68,9 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     <div className={`drawerLayer ${drawerOpen ? "open" : ""}`} aria-hidden={!drawerOpen}>
       <button className="drawerScrim" type="button" aria-label="关闭导航" tabIndex={drawerOpen ? 0 : -1} onClick={() => { setDrawerOpen(false); setPickerOpen(false); }}/>
       <aside className="appDrawer" aria-label="阿甘学车导航">
-        <div className="drawerHeader"><Brand/><div><button className="drawerIcon" type="button" aria-label="搜索对话"><Search aria-hidden="true"/></button><button className="drawerIcon" type="button" aria-label="关闭导航" onClick={() => { setDrawerOpen(false); setPickerOpen(false); }}><X aria-hidden="true"/></button></div></div>
+        <div className="drawerHeader"><Brand/><div><button className="drawerIcon" type="button" aria-label={historyOpen ? "收起对话记录" : "查看对话记录"} aria-expanded={historyOpen} onClick={() => void toggleHistory()}><Search aria-hidden="true"/></button><button className="drawerIcon" type="button" aria-label="关闭导航" onClick={() => { setDrawerOpen(false); setPickerOpen(false); setHistoryOpen(false); }}><X aria-hidden="true"/></button></div></div>
         <button className="newConversation" type="button" onClick={startConversation}><MessageSquarePlus aria-hidden="true"/><span>新建对话</span></button>
+        {historyOpen && <section className="conversationHistory" aria-label="最近对话" aria-live="polite"><div><strong>最近对话</strong><span>最多显示 30 条</span></div>{historyState === "loading" ? <p>正在加载…</p> : historyState === "error" ? <p>加载失败，请收起后重试。</p> : history.length === 0 ? <p>还没有对话记录。</p> : <div className="conversationHistoryList">{history.map(item => <Link key={item.id} href={`/ask?conversationId=${encodeURIComponent(item.id)}&${contextQuery}`} onClick={() => setDrawerOpen(false)}><strong>{item.title}</strong><span>{new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(item.updated_at))}</span></Link>)}</div>}</section>}
         <nav className="drawerNav" onClick={() => setDrawerOpen(false)}>
           <Link href={`/ask?${contextQuery}`}><Sparkles aria-hidden="true"/><span>与超级驾陪对话</span></Link>
           <Link href={`/practice?${contextQuery}`}><BookOpenCheck aria-hidden="true"/><span>顺序刷题</span></Link>
@@ -65,7 +85,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           </div>
           {pickerOpen && <div className="licensePicker" aria-label="选择准驾车型"><div className="licensePickerHeader"><strong>选择准驾车型</strong><button type="button" aria-label="关闭车型选择" onClick={() => setPickerOpen(false)}><X aria-hidden="true"/></button></div>{Array.from(new Set(LICENSE_CATEGORIES.map(item => item.group))).map(group => <section key={group}><h3>{group}</h3>{LICENSE_CATEGORIES.filter(item => item.group === group).map(item => <button key={item.code} type="button" className={item.code === currentLicense.code ? "selected" : ""} aria-pressed={item.code === currentLicense.code} onClick={() => selectLicense(item.code)}><span>{item.code} · {item.name}</span>{item.code === currentLicense.code && <Check aria-hidden="true"/>}</button>)}</section>)}</div>}
         </section>
-        <div className="drawerAccount"><span className="accountAvatar">{currentLicense.code}</span><div><strong>{currentStage.shortLabel}学员</strong><small>{currentLicense.name}</small></div><button className="drawerIcon" type="button" aria-label="设置"><Settings aria-hidden="true"/></button></div>
+        <div className="drawerAccount"><span className="accountAvatar">{currentLicense.code}</span><div><strong>{currentStage.shortLabel}学员</strong><small>{currentLicense.name}</small></div><button className="drawerIcon" type="button" aria-label="退出登录" title="退出登录" onClick={() => void signOut()}><LogOut aria-hidden="true"/></button></div>
       </aside>
     </div>
   </div>;

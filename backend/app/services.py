@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import secrets
 import time
@@ -17,6 +18,26 @@ from app.pe.prompts import SYSTEM_PROMPT, TEACHING_EXPLANATION_PROMPT
 
 def digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def issue_session_token() -> str:
+    settings = get_settings()
+    issued_at = str(int(time.time()))
+    nonce = secrets.token_urlsafe(24)
+    unsigned = f"{issued_at}.{nonce}"
+    signature = hmac.new(settings.app_secret.encode(), unsigned.encode(), hashlib.sha256).hexdigest()
+    return f"{unsigned}.{signature}"
+
+
+def session_token_is_valid(token: str) -> bool:
+    try:
+        issued_at, nonce, signature = token.split(".", 2)
+        unsigned = f"{issued_at}.{nonce}"
+        expected = hmac.new(get_settings().app_secret.encode(), unsigned.encode(), hashlib.sha256).hexdigest()
+        age_seconds = time.time() - int(issued_at)
+        return hmac.compare_digest(signature, expected) and 0 <= age_seconds <= get_settings().session_ttl_hours * 3600
+    except (TypeError, ValueError):
+        return False
 
 
 QUESTION_BANK = {
@@ -160,9 +181,10 @@ def create_answer(db: Session, question: Question, explain_again: bool = False) 
     conversation = db.get(Conversation, question.conversation_id)
     student = db.get(Student, conversation.student_id) if conversation else None
     query_text = question.resolved_text or question.raw_text
+    retrieval_text = query_text.split("\n学员追问：", 1)[0] if question.intent == "FOLLOW_UP" else query_text
     knowledge_license = "C1" if student and student.license_type in {"C1", "C2"} and student.subject in {"subject-1", "subject-4", "科目一", "科目四"} else student.license_type if student else "C1"
-    match = retrieve(db, query_text, student.school_id, student.region, knowledge_license, question.id) if student and get_settings().rag_enabled else None
-    match = match or standard_match(query_text)
+    match = retrieve(db, retrieval_text, student.school_id, student.region, knowledge_license, question.id) if student and get_settings().rag_enabled else None
+    match = match or standard_match(retrieval_text)
     question.route = "standard_question" if match else "open_theory"
     question.status = QuestionStatus.RETRIEVING.value
     db.commit()
@@ -217,10 +239,10 @@ def authenticate_invitation(db: Session, code: str) -> tuple[Student, str] | Non
         return None
     if invitation.student_id:
         student = db.get(Student, invitation.student_id)
-        token = secrets.token_urlsafe(32)
+        token = issue_session_token()
         student.session_token_hash = digest(token)
     else:
-        token = secrets.token_urlsafe(32)
+        token = issue_session_token()
         student = Student(school_id=invitation.school_id, session_token_hash=digest(token))
         db.add(student)
         db.flush()

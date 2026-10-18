@@ -21,6 +21,12 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
+    existing = config.attributes.get("connection")
+    if existing is not None:
+        context.configure(connection=existing, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
     connectable = engine_from_config(config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
@@ -29,4 +35,3 @@ def run_migrations_online():
 
 
 run_migrations_offline() if context.is_offline_mode() else run_migrations_online()
-
